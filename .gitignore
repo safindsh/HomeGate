@@ -1,0 +1,35 @@
+# ── СЕКРЕТЫ — никогда не коммитить ──
+.env
+*.env
+!*.env.example
+config.json
+!config.example.json
+*.key
+*.pem
+*.crt
+secrets/
+*_token
+*token.txt
+
+# ── данные ──
+storage/
+snapshots/
+*.db
+*.sqlite
+
+# ── логи ──
+*.log
+logs/
+
+# ── питон ──
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# ── бэкапы и временное ──
+*.bak
+*.bak[0-9]
+*.orig
+*.tmp
+*~

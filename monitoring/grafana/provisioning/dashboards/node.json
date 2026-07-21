@@ -1,0 +1,195 @@
+{
+  "uid": "homegate-node",
+  "title": "Сервер — состояние",
+  "tags": ["homegate"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": {"from": "now-6h", "to": "now"},
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Аптайм",
+      "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "PBFA97CFB590B2093"},
+      "targets": [{"expr": "time() - node_boot_time_seconds", "refId": "A"}],
+      "fieldConfig": {
+        "defaults": {"unit": "s", "color": {"mode": "fixed", "fixedColor": "text"}},
+        "overrides": []
+      },
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "textMode": "value"}
+    },
+    {
+      "type": "stat",
+      "title": "CPU занят",
+      "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "PBFA97CFB590B2093"},
+      "targets": [{"expr": "100 - (avg(rate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100)", "refId": "A"}],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent", "min": 0, "max": 100,
+          "thresholds": {"mode": "absolute", "steps": [
+            {"color": "green", "value": null},
+            {"color": "yellow", "value": 70},
+            {"color": "red", "value": 90}
+          ]}
+        },
+        "overrides": []
+      },
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "colorMode": "value"}
+    },
+    {
+      "type": "stat",
+      "title": "Память занята",
+      "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "PBFA97CFB590B2093"},
+      "targets": [{"expr": "(1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100", "refId": "A"}],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent", "min": 0, "max": 100,
+          "thresholds": {"mode": "absolute", "steps": [
+            {"color": "green", "value": null},
+            {"color": "yellow", "value": 80},
+            {"color": "red", "value": 92}
+          ]}
+        },
+        "overrides": []
+      },
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "colorMode": "value"}
+    },
+    {
+      "type": "stat",
+      "title": "Диск / занят",
+      "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "PBFA97CFB590B2093"},
+      "targets": [{"expr": "(1 - node_filesystem_avail_bytes{mountpoint=\"/\"} / node_filesystem_size_bytes{mountpoint=\"/\"}) * 100", "refId": "A"}],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent", "min": 0, "max": 100,
+          "thresholds": {"mode": "absolute", "steps": [
+            {"color": "green", "value": null},
+            {"color": "yellow", "value": 75},
+            {"color": "red", "value": 90}
+          ]}
+        },
+        "overrides": []
+      },
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "colorMode": "value"}
+    },
+    {
+      "type": "timeseries",
+      "title": "Загрузка CPU по режимам",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4},
+      "datasource": {"type": "prometheus", "uid": "PBFA97CFB590B2093"},
+      "targets": [{
+        "expr": "avg by (mode) (rate(node_cpu_seconds_total{mode!=\"idle\"}[5m])) * 100",
+        "legendFormat": "{{mode}}", "refId": "A"
+      }],
+      "fieldConfig": {
+        "defaults": {"unit": "percent", "custom": {"fillOpacity": 20, "showPoints": "never"}},
+        "overrides": []
+      },
+      "options": {"legend": {"displayMode": "list", "placement": "bottom"}}
+    },
+    {
+      "type": "timeseries",
+      "title": "Память",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4},
+      "datasource": {"type": "prometheus", "uid": "PBFA97CFB590B2093"},
+      "targets": [
+        {"expr": "node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes", "legendFormat": "занято", "refId": "A"},
+        {"expr": "node_memory_MemTotal_bytes", "legendFormat": "всего", "refId": "B"}
+      ],
+      "fieldConfig": {
+        "defaults": {"unit": "bytes", "custom": {"fillOpacity": 15, "showPoints": "never"}},
+        "overrides": []
+      },
+      "options": {"legend": {"displayMode": "list", "placement": "bottom"}}
+    },
+    {
+      "type": "timeseries",
+      "title": "Средняя нагрузка",
+      "gridPos": {"h": 7, "w": 8, "x": 0, "y": 12},
+      "datasource": {"type": "prometheus", "uid": "PBFA97CFB590B2093"},
+      "targets": [
+        {"expr": "node_load1", "legendFormat": "1м", "refId": "A"},
+        {"expr": "node_load5", "legendFormat": "5м", "refId": "B"},
+        {"expr": "node_load15", "legendFormat": "15м", "refId": "C"}
+      ],
+      "fieldConfig": {
+        "defaults": {"custom": {"fillOpacity": 0, "showPoints": "never"}},
+        "overrides": []
+      },
+      "options": {"legend": {"displayMode": "list", "placement": "bottom"}}
+    },
+    {
+      "type": "timeseries",
+      "title": "Сеть",
+      "gridPos": {"h": 7, "w": 8, "x": 8, "y": 12},
+      "datasource": {"type": "prometheus", "uid": "PBFA97CFB590B2093"},
+      "targets": [
+        {"expr": "rate(node_network_receive_bytes_total{device!~\"lo|docker.*|veth.*|br-.*\"}[5m])", "legendFormat": "{{device}} вход", "refId": "A"},
+        {"expr": "rate(node_network_transmit_bytes_total{device!~\"lo|docker.*|veth.*|br-.*\"}[5m])", "legendFormat": "{{device}} выход", "refId": "B"}
+      ],
+      "fieldConfig": {
+        "defaults": {"unit": "Bps", "custom": {"fillOpacity": 15, "showPoints": "never"}},
+        "overrides": []
+      },
+      "options": {"legend": {"displayMode": "list", "placement": "bottom"}}
+    },
+    {
+      "type": "timeseries",
+      "title": "Температура",
+      "gridPos": {"h": 7, "w": 8, "x": 16, "y": 12},
+      "datasource": {"type": "prometheus", "uid": "PBFA97CFB590B2093"},
+      "targets": [{
+        "expr": "node_hwmon_temp_celsius",
+        "legendFormat": "{{chip}} {{sensor}}", "refId": "A"
+      }],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius",
+          "custom": {"fillOpacity": 10, "showPoints": "never"},
+          "thresholds": {"mode": "absolute", "steps": [
+            {"color": "green", "value": null},
+            {"color": "yellow", "value": 70},
+            {"color": "red", "value": 85}
+          ]}
+        },
+        "overrides": []
+      },
+      "options": {"legend": {"displayMode": "list", "placement": "bottom"}}
+    },
+    {
+      "type": "timeseries",
+      "title": "Дисковый ввод-вывод",
+      "gridPos": {"h": 7, "w": 12, "x": 0, "y": 19},
+      "datasource": {"type": "prometheus", "uid": "PBFA97CFB590B2093"},
+      "targets": [
+        {"expr": "rate(node_disk_read_bytes_total{device!~\"dm-.*|loop.*\"}[5m])", "legendFormat": "{{device}} чтение", "refId": "A"},
+        {"expr": "rate(node_disk_written_bytes_total{device!~\"dm-.*|loop.*\"}[5m])", "legendFormat": "{{device}} запись", "refId": "B"}
+      ],
+      "fieldConfig": {
+        "defaults": {"unit": "Bps", "custom": {"fillOpacity": 15, "showPoints": "never"}},
+        "overrides": []
+      },
+      "options": {"legend": {"displayMode": "list", "placement": "bottom"}}
+    },
+    {
+      "type": "timeseries",
+      "title": "Свободное место по разделам",
+      "gridPos": {"h": 7, "w": 12, "x": 12, "y": 19},
+      "datasource": {"type": "prometheus", "uid": "PBFA97CFB590B2093"},
+      "targets": [{
+        "expr": "node_filesystem_avail_bytes{fstype!~\"tmpfs|devtmpfs|overlay\"}",
+        "legendFormat": "{{mountpoint}}", "refId": "A"
+      }],
+      "fieldConfig": {
+        "defaults": {"unit": "bytes", "custom": {"fillOpacity": 10, "showPoints": "never"}},
+        "overrides": []
+      },
+      "options": {"legend": {"displayMode": "list", "placement": "bottom"}}
+    }
+  ]
+}

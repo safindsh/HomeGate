@@ -1,0 +1,26 @@
+services:
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: qdrant
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:6333:6333"
+      - "127.0.0.1:6334:6334"
+    volumes:
+      - /opt/qdrant/storage:/qdrant/storage:Z
+      - /opt/qdrant/snapshots:/qdrant/snapshots:Z
+    environment:
+      QDRANT__SERVICE__API_KEY: ${QDRANT_API_KEY}
+      QDRANT__LOG_LEVEL: INFO
+      QDRANT__STORAGE__SNAPSHOTS_PATH: /qdrant/snapshots
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c \x27:> /dev/tcp/127.0.0.1/6333\x27 || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

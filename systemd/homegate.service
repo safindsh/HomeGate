@@ -1,0 +1,17 @@
+[Unit]
+Description=HomeGate MCP server
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/homegate/app
+Environment=HOMEGATE_CONFIG=/opt/homegate/config/config.json
+ExecStart=/opt/homegate/venv/bin/uvicorn homegate:app --host 127.0.0.1 --port 8800
+Restart=on-failure
+RestartSec=5
+StandardOutput=append:/opt/homegate/logs/service.log
+StandardError=append:/opt/homegate/logs/service.log
+
+[Install]
+WantedBy=multi-user.target

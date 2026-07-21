@@ -1,0 +1,27 @@
+{
+  "_comment": "Скопировать в /opt/homegate/config/config.json и заполнить. chmod 600!",
+  "qdrant": {
+    "url": "http://127.0.0.1:6333",
+    "api_key": "<openssl rand -hex 32>",
+    "collection": "dima_memory"
+  },
+  "homeassistant": {
+    "_comment": "Заполнить после разворачивания HA. write_whitelist — только те сущности, которыми РАЗРЕШЕНО управлять автоматически. Датчики дыма и CO сюда не вносить.",
+    "url": "http://127.0.0.1:8123",
+    "token": "<long-lived access token из профиля HA>",
+    "write_whitelist": []
+  },
+  "shell": {
+    "timeout": 120
+  },
+  "tokens": {
+    "<openssl rand -hex 32>": {
+      "role": "user",
+      "name": "dima"
+    },
+    "<openssl rand -hex 32>": {
+      "role": "admin",
+      "name": "tigra"
+    }
+  }
+}
