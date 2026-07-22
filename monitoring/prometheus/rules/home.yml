@@ -12,7 +12,10 @@ groups:
           description: "{{ $labels.friendly_name }} — тревога. Сирена звучит на самом датчике."
 
       - alert: ВоротаДолгоОткрыты
-        expr: hass_cover_state == 1
+        # У hass_cover_state отдельная серия на КАЖДОЕ состояние
+        # (closed/open/opening/closing), и одна из них всегда равна 1.
+        # Без фильтра по метке state правило срабатывает всегда.
+        expr: hass_cover_state{state="open"} == 1
         for: 15m
         labels:
           severity: warning
