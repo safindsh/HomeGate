@@ -1,0 +1,128 @@
+{
+  "uid": "homegate-house",
+  "title": "Дом",
+  "tags": ["homegate", "дом"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "1m",
+  "time": {"from": "now-24h", "to": "now"},
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Потребление сейчас",
+      "gridPos": {"h": 5, "w": 6, "x": 0, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "PBFA97CFB590B2093"},
+      "targets": [{"expr": "sum(hass_sensor_power_w)", "refId": "A"}],
+      "fieldConfig": {"defaults": {"unit": "watt", "decimals": 1,
+        "thresholds": {"mode": "absolute", "steps": [
+          {"color": "green", "value": null},
+          {"color": "yellow", "value": 1000},
+          {"color": "red", "value": 3000}]}}, "overrides": []},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "colorMode": "value"}
+    },
+    {
+      "type": "stat",
+      "title": "Устройств на связи",
+      "gridPos": {"h": 5, "w": 6, "x": 6, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "PBFA97CFB590B2093"},
+      "targets": [{"expr": "sum(hass_entity_available)", "refId": "A"}],
+      "fieldConfig": {"defaults": {"unit": "short", "decimals": 0,
+        "color": {"mode": "fixed", "fixedColor": "green"}}, "overrides": []},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "colorMode": "value"}
+    },
+    {
+      "type": "stat",
+      "title": "Свет включён",
+      "gridPos": {"h": 5, "w": 6, "x": 12, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "PBFA97CFB590B2093"},
+      "targets": [{"expr": "count(hass_light_brightness_percent > 0) or vector(0)", "refId": "A"}],
+      "fieldConfig": {"defaults": {"unit": "short", "decimals": 0,
+        "thresholds": {"mode": "absolute", "steps": [
+          {"color": "text", "value": null},
+          {"color": "yellow", "value": 1}]}}, "overrides": []},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "colorMode": "value"}
+    },
+    {
+      "type": "stat",
+      "title": "Розеток включено",
+      "gridPos": {"h": 5, "w": 6, "x": 18, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "PBFA97CFB590B2093"},
+      "targets": [{"expr": "sum(hass_switch_state) or vector(0)", "refId": "A"}],
+      "fieldConfig": {"defaults": {"unit": "short", "decimals": 0,
+        "color": {"mode": "fixed", "fixedColor": "text"}}, "overrides": []},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "colorMode": "value"}
+    },
+    {
+      "type": "timeseries",
+      "title": "Потребление по розеткам",
+      "gridPos": {"h": 9, "w": 24, "x": 0, "y": 5},
+      "datasource": {"type": "prometheus", "uid": "PBFA97CFB590B2093"},
+      "targets": [{"expr": "hass_sensor_power_w", "legendFormat": "{{friendly_name}}", "refId": "A"}],
+      "fieldConfig": {"defaults": {"unit": "watt",
+        "custom": {"fillOpacity": 18, "showPoints": "never", "lineWidth": 2,
+                   "stacking": {"mode": "normal", "group": "A"}}}, "overrides": []},
+      "options": {"legend": {"displayMode": "table", "placement": "right",
+                             "calcs": ["mean", "max"]}, "tooltip": {"mode": "multi", "sort": "desc"}}
+    },
+    {
+      "type": "timeseries",
+      "title": "Накопленный расход",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 14},
+      "datasource": {"type": "prometheus", "uid": "PBFA97CFB590B2093"},
+      "targets": [{"expr": "hass_sensor_energy_kwh", "legendFormat": "{{friendly_name}}", "refId": "A"}],
+      "fieldConfig": {"defaults": {"unit": "kwatth", "decimals": 2,
+        "custom": {"fillOpacity": 0, "showPoints": "never", "lineWidth": 2}}, "overrides": []},
+      "options": {"legend": {"displayMode": "list", "placement": "bottom"}}
+    },
+    {
+      "type": "timeseries",
+      "title": "Напряжение в сети",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 14},
+      "datasource": {"type": "prometheus", "uid": "PBFA97CFB590B2093"},
+      "targets": [{"expr": "avg(hass_sensor_voltage_v)", "legendFormat": "среднее", "refId": "A"},
+                  {"expr": "min(hass_sensor_voltage_v)", "legendFormat": "минимум", "refId": "B"},
+                  {"expr": "max(hass_sensor_voltage_v)", "legendFormat": "максимум", "refId": "C"}],
+      "fieldConfig": {"defaults": {"unit": "volt", "decimals": 0,
+        "custom": {"fillOpacity": 0, "showPoints": "never", "lineWidth": 2},
+        "thresholds": {"mode": "absolute", "steps": [
+          {"color": "red", "value": null},
+          {"color": "green", "value": 205},
+          {"color": "red", "value": 245}]}}, "overrides": []},
+      "options": {"legend": {"displayMode": "list", "placement": "bottom"}}
+    },
+    {
+      "type": "state-timeline",
+      "title": "Ворота",
+      "gridPos": {"h": 6, "w": 12, "x": 0, "y": 22},
+      "datasource": {"type": "prometheus", "uid": "PBFA97CFB590B2093"},
+      "targets": [{"expr": "hass_cover_state", "legendFormat": "{{friendly_name}}", "refId": "A"}],
+      "fieldConfig": {"defaults": {"custom": {"fillOpacity": 80, "lineWidth": 0},
+        "mappings": [{"type": "value", "options": {
+          "0": {"text": "закрыто", "color": "green", "index": 0},
+          "1": {"text": "открыто", "color": "orange", "index": 1}}}]}, "overrides": []},
+      "options": {"legend": {"displayMode": "list", "placement": "bottom"}, "mergeValues": true}
+    },
+    {
+      "type": "state-timeline",
+      "title": "Свет",
+      "gridPos": {"h": 6, "w": 12, "x": 12, "y": 22},
+      "datasource": {"type": "prometheus", "uid": "PBFA97CFB590B2093"},
+      "targets": [{"expr": "hass_light_brightness_percent", "legendFormat": "{{friendly_name}}", "refId": "A"}],
+      "fieldConfig": {"defaults": {"unit": "percent", "custom": {"fillOpacity": 80, "lineWidth": 0}}, "overrides": []},
+      "options": {"legend": {"displayMode": "list", "placement": "bottom"}, "mergeValues": true}
+    },
+    {
+      "type": "state-timeline",
+      "title": "Датчик дыма",
+      "gridPos": {"h": 5, "w": 24, "x": 0, "y": 28},
+      "datasource": {"type": "prometheus", "uid": "PBFA97CFB590B2093"},
+      "targets": [{"expr": "hass_binary_sensor_state{entity=~\".*smoke.*\"}", "legendFormat": "{{friendly_name}}", "refId": "A"}],
+      "fieldConfig": {"defaults": {"custom": {"fillOpacity": 80, "lineWidth": 0},
+        "mappings": [{"type": "value", "options": {
+          "0": {"text": "норма", "color": "green", "index": 0},
+          "1": {"text": "ТРЕВОГА", "color": "red", "index": 1}}}]}, "overrides": []},
+      "options": {"legend": {"displayMode": "list", "placement": "bottom"}, "mergeValues": true}
+    }
+  ]
+}

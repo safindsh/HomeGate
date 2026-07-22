@@ -46,6 +46,14 @@ nav a small{display:block;color:var(--dim);font-size:.78rem;margin-top:2px}
 .err{background:#2a1d1d;border-color:#4a2c2c;color:#e0a0a0;
   padding:12px 16px;border-radius:10px;font-size:.88rem}
 footer{margin-top:32px;color:var(--dim);font-size:.78rem;text-align:center}
+.chart{background:var(--card);border:1px solid var(--line);border-radius:10px;
+  padding:14px 16px 8px;margin-bottom:12px}
+.chart h3{margin:0 0 2px;font-size:.9rem;font-weight:600}
+.chart .sub{color:var(--dim);font-size:.78rem;margin-bottom:10px}
+.chart svg{display:block;width:100%;height:120px;overflow:visible}
+.chart .gl{stroke:var(--line);stroke-width:1}
+.chart .lb{fill:var(--dim);font-size:10px}
+.chart .empty{color:var(--dim);font-size:.85rem;padding:14px 0}
 </style>
 </head>
 <body>
@@ -55,6 +63,7 @@ footer{margin-top:32px;color:var(--dim);font-size:.78rem;text-align:center}
     <span class="upd" id="upd">загрузка…</span>
   </header>
   <div id="content"><p class="muted">Читаю состояние дома…</p></div>
+  <div id="charts"></div>
   <nav>
     <a href="https://192.168.55.120:8443/">Home Assistant<small>управление устройствами</small></a>
     <a href="/grafana/">Grafana<small>графики и история</small></a>
@@ -187,6 +196,129 @@ async function load(){
 }
 load();
 setInterval(load, 30000);
+
+// ── Графики из истории Home Assistant ──────────────────────────
+// Рисуем сами в SVG: тянуть библиотеку графиков ради двух линий
+// на слабой машине незачем.
+
+const VOLT_IDS = [
+  "sensor.wifi_rozetka_voltage",
+  "sensor.maskitol_v_komnate_gleba_voltage",
+  "sensor.maskitol_v_komnate_iana_voltage",
+  "sensor.moskitol_spalnia_voltage"
+];
+
+const POWER_IDS = [
+  "sensor.wifi_rozetka_power",
+  "sensor.maskitol_v_komnate_gleba_power",
+  "sensor.maskitol_v_komnate_iana_power",
+  "sensor.moskitol_spalnia_power"
+];
+
+// Напряжение меняется постоянно, поэтому график будет всегда.
+// Мощность пишется только при изменении: если все розетки выключены,
+// точек не будет — это не ошибка, график оживёт при нагрузке.
+const CHARTS = [
+  {ids:VOLT_IDS,  mode:"avg", t:"Напряжение в сети",   u:" В",  c:"#5b9dd9", dec:0},
+  {ids:POWER_IDS, mode:"sum", t:"Потребление розеток", u:" Вт", c:"#4a9d5f", dec:1}
+];
+
+function svgLine(points, color){
+  if (points.length < 2) return "";
+  const W = 600, H = 120, pad = 4;
+  const xs = points.map(p => p.t), ys = points.map(p => p.v);
+  const x0 = Math.min(...xs), x1 = Math.max(...xs);
+  let y0 = Math.min(...ys), y1 = Math.max(...ys);
+  if (y1 - y0 < 1e-6){ y0 -= 1; y1 += 1; }
+  const sx = t => ((t - x0) / (x1 - x0 || 1)) * W;
+  const sy = v => H - pad - ((v - y0) / (y1 - y0)) * (H - pad*2);
+
+  const d = points.map((p,i) => (i ? "L" : "M") + sx(p.t).toFixed(1) + " " + sy(p.v).toFixed(1)).join(" ");
+  const area = d + ` L${W} ${H} L0 ${H} Z`;
+  const gid = "g" + Math.random().toString(36).slice(2,8);
+
+  const grid = [0, .5, 1].map(f => {
+    const y = pad + f * (H - pad*2);
+    return `<line class="gl" x1="0" y1="${y.toFixed(1)}" x2="${W}" y2="${y.toFixed(1)}"/>`;
+  }).join("");
+
+  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
+    <defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="${color}" stop-opacity=".28"/>
+      <stop offset="100%" stop-color="${color}" stop-opacity="0"/>
+    </linearGradient></defs>
+    ${grid}
+    <path d="${area}" fill="url(#${gid})"/>
+    <path d="${d}" fill="none" stroke="${color}" stroke-width="2"
+          stroke-linejoin="round" stroke-linecap="round"/>
+  </svg>`;
+}
+
+function series(raw){
+  const out = [];
+  (raw || []).forEach(p => {
+    const v = parseFloat(p.state);
+    if (isNaN(v)) return;
+    out.push({t: new Date(p.last_changed || p.last_updated).getTime(), v});
+  });
+  return out.sort((a,b) => a.t - b.t);
+}
+
+function combine(all, mode){
+  // Складываем мощность розеток: у каждой свои моменты замеров,
+  // поэтому идём по общей шкале времени и берём последнее известное
+  // значение каждой розетки.
+  const marks = [...new Set(all.flat().map(p => p.t))].sort((a,b) => a-b);
+  const idx = all.map(() => 0), last = all.map(() => null);
+  const out = [];
+  marks.forEach(t => {
+    let s = 0, n = 0;
+    all.forEach((ser,i) => {
+      while (idx[i] < ser.length && ser[idx[i]].t <= t) last[i] = ser[idx[i]++].v;
+      // пока датчик не отчитался ни разу — не учитываем его,
+      // иначе ноль занижает среднее в начале графика
+      if (last[i] !== null){ s += last[i]; n++; }
+    });
+    if (n) out.push({t, v: mode === "avg" ? s / n : s});
+  });
+  return out;
+}
+
+async function history(ids){
+  const from = new Date(Date.now() - 24*3600*1000).toISOString().replace(/\.\d+Z$/, "Z");
+  const r = await fetch(`/api/home-history/${from}?filter_entity_id=${ids.join(",")}&minimal_response`,
+                        {cache:"no-store"});
+  if (!r.ok) throw new Error("HTTP " + r.status);
+  return r.json();
+}
+
+async function loadCharts(){
+  const box = document.getElementById("charts");
+  try{
+    const ids = [...new Set(CHARTS.flatMap(c => c.ids))];
+    const data = await history(ids);
+    const map = {};
+    data.forEach(arr => { if (arr && arr.length) map[arr[0].entity_id] = series(arr); });
+
+    let html = "";
+    CHARTS.forEach(c => {
+      const parts = c.ids.map(i => map[i]).filter(x => x && x.length > 1);
+      const pts = parts.length ? combine(parts, c.mode) : [];
+      const cur = pts.length ? pts[pts.length-1].v.toFixed(c.dec) + c.u : "нет данных";
+      html += `<div class="chart"><h3>${esc(c.t)}</h3>
+        <div class="sub">сейчас ${esc(cur)} · за сутки</div>
+        ${pts.length > 1 ? svgLine(pts, c.c) : `<div class="empty">Пока мало точек для графика</div>`}
+      </div>`;
+    });
+    box.innerHTML = `<div class="sec"><h2>За сутки</h2>${html}</div>`;
+  }catch(e){
+    box.innerHTML = `<div class="sec"><h2>За сутки</h2>
+      <div class="err">Не удалось получить историю: ${esc(e.message)}</div></div>`;
+  }
+}
+loadCharts();
+setInterval(loadCharts, 300000);
+
 </script>
 </body>
 </html>
