@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Дом</title>
+<style>
+:root{
+  --bg:#0f1115; --card:#181b21; --card2:#1e222a; --line:#282d37;
+  --tx:#e8eaed; --dim:#8b919c; --acc:#5b9dd9;
+  --ok:#4a9d5f; --warn:#c9a227; --off:#4a4f5a; --bad:#c05050;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);
+  font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+.wrap{max-width:1000px;margin:0 auto;padding:24px 16px 48px}
+header{display:flex;align-items:baseline;justify-content:space-between;
+  margin-bottom:24px;flex-wrap:wrap;gap:8px}
+h1{font-size:1.5rem;font-weight:600;margin:0;letter-spacing:-.01em}
+.upd{font-size:.8rem;color:var(--dim)}
+.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(220px,1fr))}
+.sec{margin-bottom:28px}
+.sec h2{font-size:.78rem;text-transform:uppercase;letter-spacing:.08em;
+  color:var(--dim);font-weight:600;margin:0 0 10px;padding-left:2px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;
+  padding:14px 16px;display:flex;flex-direction:column;gap:6px}
+.card .nm{font-size:.88rem;color:var(--dim);line-height:1.35}
+.card .vl{font-size:1.35rem;font-weight:600;letter-spacing:-.02em}
+.card.wide{grid-column:1/-1}
+.st{display:inline-flex;align-items:center;gap:7px;font-size:1.05rem;font-weight:500}
+.dot{width:9px;height:9px;border-radius:50%;flex:none}
+.d-ok{background:var(--ok)} .d-off{background:var(--off)}
+.d-warn{background:var(--warn)} .d-bad{background:var(--bad)}
+.muted{color:var(--dim)}
+.row{display:flex;justify-content:space-between;align-items:center;
+  padding:9px 0;border-bottom:1px solid var(--line)}
+.row:last-child{border-bottom:none}
+.row .l{font-size:.9rem}
+.row .r{font-size:.9rem;color:var(--dim)}
+nav{display:flex;gap:10px;margin-top:28px;flex-wrap:wrap}
+nav a{flex:1;min-width:150px;padding:13px 16px;background:var(--card);
+  border:1px solid var(--line);border-radius:10px;color:var(--tx);
+  text-decoration:none;font-size:.92rem;transition:background .15s}
+nav a:hover{background:var(--card2)}
+nav a small{display:block;color:var(--dim);font-size:.78rem;margin-top:2px}
+.err{background:#2a1d1d;border-color:#4a2c2c;color:#e0a0a0;
+  padding:12px 16px;border-radius:10px;font-size:.88rem}
+footer{margin-top:32px;color:var(--dim);font-size:.78rem;text-align:center}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Дом</h1>
+    <span class="upd" id="upd">загрузка…</span>
+  </header>
+  <div id="content"><p class="muted">Читаю состояние дома…</p></div>
+  <nav>
+    <a href="https://192.168.55.120:8443/">Home Assistant<small>управление устройствами</small></a>
+    <a href="/grafana/">Grafana<small>графики и история</small></a>
+  </nav>
+  <footer>Обновляется каждые 30 секунд</footer>
+</div>
+<script>
+const OFF = ["unavailable","unknown"];
+
+function esc(s){const d=document.createElement("div");d.textContent=s;return d.innerHTML}
+
+function fmtName(n){
+  return n.replace(/ Socket 1$/,"").replace(/ Switch 1$/,"")
+          .replace(/ Door 1$/,"").replace(/ Мощность$/,"")
+          .replace(/ Дым$/,"").replace(/ Подсветка$/," (подсветка)")
+          .trim();
+}
+
+function card(name, inner){
+  return `<div class="card"><div class="nm">${esc(fmtName(name))}</div>${inner}</div>`;
+}
+
+function stateLine(cls, text){
+  return `<div class="st"><span class="dot ${cls}"></span>${esc(text)}</div>`;
+}
+
+function render(states){
+  const by = {};
+  states.forEach(s => by[s.entity_id] = s);
+  const get = id => by[id];
+  let html = "";
+
+  // ── Безопасность ──
+  const smoke = get("binary_sensor.smoke_alarm_smoke");
+  const covers = states.filter(s => s.entity_id.startsWith("cover."));
+  let sec = "";
+  if (smoke){
+    const off = OFF.includes(smoke.state);
+    sec += card("Датчик дыма", off
+      ? stateLine("d-warn","нет связи")
+      : stateLine(smoke.state === "on" ? "d-bad" : "d-ok",
+                  smoke.state === "on" ? "ТРЕВОГА" : "норма"));
+  }
+  covers.forEach(c => {
+    const off = OFF.includes(c.state);
+    const open = c.state === "open";
+    sec += card(c.attributes.friendly_name || c.entity_id, off
+      ? stateLine("d-off","нет связи")
+      : stateLine(open ? "d-warn" : "d-ok", open ? "открыто" : "закрыто"));
+  });
+  if (sec) html += `<div class="sec"><h2>Безопасность</h2><div class="grid">${sec}</div></div>`;
+
+  // ── Свет ──
+  const lights = states.filter(s =>
+    s.entity_id.startsWith("light.") ||
+    (s.entity_id.startsWith("switch.") && /svet|light/i.test(s.entity_id)));
+  let lg = "";
+  lights.forEach(l => {
+    const off = OFF.includes(l.state);
+    lg += card(l.attributes.friendly_name || l.entity_id, off
+      ? stateLine("d-off","нет связи")
+      : stateLine(l.state === "on" ? "d-ok" : "d-off", l.state === "on" ? "включён" : "выключен"));
+  });
+  if (lg) html += `<div class="sec"><h2>Свет</h2><div class="grid">${lg}</div></div>`;
+
+  // ── Розетки и потребление ──
+  const plugs = states.filter(s =>
+    s.entity_id.startsWith("switch.") &&
+    s.entity_id.endsWith("_socket_1"));
+  let rows = "", total = 0, haveTotal = false;
+  plugs.forEach(p => {
+    const base = p.entity_id.replace(/^switch\./,"").replace(/_socket_1$/,"");
+    const pw = get(`sensor.${base}_power`);
+    const offline = OFF.includes(p.state);
+    let right;
+    if (offline){ right = "нет связи"; }
+    else if (pw && !OFF.includes(pw.state)){
+      const w = parseFloat(pw.state);
+      if (!isNaN(w)){ total += w; haveTotal = true; }
+      right = p.state === "on" ? `включена · ${pw.state} Вт` : "выключена";
+    } else {
+      right = p.state === "on" ? "включена" : "выключена";
+    }
+    rows += `<div class="row"><span class="l">${esc(fmtName(p.attributes.friendly_name || base))}</span><span class="r">${esc(right)}</span></div>`;
+  });
+  if (rows){
+    let head = "";
+    if (haveTotal) head = card("Сейчас потребляют", `<div class="vl">${total.toFixed(1)} Вт</div>`);
+    html += `<div class="sec"><h2>Розетки</h2><div class="grid">${head}
+      <div class="card wide">${rows}</div></div></div>`;
+  }
+
+  // ── Не на связи ──
+  const dead = {};
+  states.forEach(s => {
+    if (!OFF.includes(s.state)) return;
+    const d = s.entity_id.split(".")[0];
+    if (["person","tts","conversation","event","update","backup","sun","weather","stt","todo","scene","script","automation"].includes(d)) return;
+    if (s.entity_id.startsWith("sensor.backup_")) return;
+    let n = s.attributes.friendly_name || s.entity_id;
+    n = n.split(" Ток")[0].split(" Мощность")[0].split(" Напряжение")[0]
+         .split(" Всего энергия")[0].split(" Поведение")[0].split(" Режим")[0]
+         .split(" Блокировка")[0].split(" Socket")[0].split(" Door")[0];
+    dead[n] = (dead[n]||0)+1;
+  });
+  const names = Object.keys(dead).sort();
+  if (names.length){
+    let r = "";
+    names.forEach(n => r += `<div class="row"><span class="l">${esc(n)}</span><span class="r">нет связи</span></div>`);
+    html += `<div class="sec"><h2>Не отвечают</h2><div class="card wide">${r}</div></div>`;
+  }
+
+  document.getElementById("content").innerHTML = html || `<p class="muted">Нет данных для показа.</p>`;
+  const t = new Date();
+  document.getElementById("upd").textContent =
+    "обновлено в " + t.toLocaleTimeString("ru-RU",{hour:"2-digit",minute:"2-digit"});
+}
+
+async function load(){
+  try{
+    const r = await fetch("/api/home-states", {cache:"no-store"});
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    render(await r.json());
+  }catch(e){
+    document.getElementById("content").innerHTML =
+      `<div class="err">Не удалось получить состояние дома: ${esc(e.message)}.<br>
+       Проверьте, что Home Assistant запущен.</div>`;
+    document.getElementById("upd").textContent = "ошибка связи";
+  }
+}
+load();
+setInterval(load, 30000);
+</script>
+</body>
+</html>
