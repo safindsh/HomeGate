@@ -17,3 +17,19 @@ http:
     - 127.0.0.1
     - ::1
     - 172.16.0.0/12
+
+# Метрики для Prometheus (эндпоинт /api/prometheus, нужен Bearer-токен)
+prometheus:
+  namespace: hass
+  filter:
+    exclude_domains:
+      - automation
+      - script
+      - scene
+      - person
+      - zone
+      - tts
+      - conversation
+    exclude_entity_globs:
+      - sensor.backup_*
+      - sensor.sun_*

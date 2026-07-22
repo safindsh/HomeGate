@@ -225,34 +225,59 @@ async def sensor_history(entity_id: str, hours: int = 24) -> str:
 
 
 async def home_anomalies() -> str:
-    """Не «покажи датчики», а «что выглядит не так»."""
+    """Не «покажи датчики», а «что выглядит не так».
+
+    Служебные сущности самого HA (бэкапы, TTS, person, погода) к дому
+    отношения не имеют и только зашумляют выдачу — отфильтровываем.
+    Недоступные группируем по устройству: одно offline-устройство даёт
+    4-6 сущностей, перечислять каждую бессмысленно.
+    """
+    IGNORED_DOMAINS = {
+        "conversation", "tts", "stt", "person", "zone", "sun", "backup",
+        "event", "update", "todo", "script", "automation", "scene",
+        "input_boolean", "input_number", "input_text", "input_select",
+        "device_tracker", "assist_satellite", "ai_task", "weather",
+    }
+    IGNORED_PREFIXES = ("sensor.backup_", "sensor.sun_")
+    ATTR_SUFFIXES = (
+        " Ток", " Мощность", " Напряжение", " Всего энергия",
+        " Поведение при запуске", " Режим светового индикатора",
+        " Блокировка от детей", " Socket", " Door", " Состояние батареи",
+    )
+
     states = await _ha("GET", "/api/states")
     now = time.time()
-    problems = []
+
+    offline: dict[str, int] = {}
+    problems: list[str] = []
+
     for s in states:
         eid = s["entity_id"]
+        domain = eid.split(".")[0]
+        if domain in IGNORED_DOMAINS or eid.startswith(IGNORED_PREFIXES):
+            continue
+
         st = s["state"]
         attrs = s.get("attributes", {})
         name = attrs.get("friendly_name", eid)
 
         if st in ("unavailable", "unknown"):
-            problems.append(f"НЕДОСТУПЕН: {name} [{eid}]")
+            device = name
+            for suf in ATTR_SUFFIXES:
+                device = device.split(suf)[0]
+            offline[device] = offline.get(device, 0) + 1
             continue
 
-        # молчащий датчик
         try:
             lc = s.get("last_changed", "")
             import datetime
 
             t = datetime.datetime.fromisoformat(lc.replace("Z", "+00:00")).timestamp()
             if eid.startswith("sensor.") and now - t > 86400:
-                problems.append(
-                    f"МОЛЧИТ >24ч: {name} [{eid}], последнее значение {st}"
-                )
+                problems.append(f"МОЛЧИТ >24ч: {name} [{eid}], последнее значение {st}")
         except Exception:
             pass
 
-        # садящаяся батарейка
         if attrs.get("device_class") == "battery":
             try:
                 if float(st) < 20:
@@ -260,7 +285,20 @@ async def home_anomalies() -> str:
             except ValueError:
                 pass
 
-    return "\n".join(problems) if problems else "Аномалий не обнаружено."
+        if eid.endswith("_battery_state") and st in ("low", "empty"):
+            problems.append(f"БАТАРЕЯ {st}: {name} [{eid}]")
+
+    out: list[str] = []
+    if offline:
+        out.append("НЕ НА СВЯЗИ:")
+        for device, cnt in sorted(offline.items()):
+            out.append(f"  - {device} ({cnt})")
+    if problems:
+        if out:
+            out.append("")
+        out.extend(problems)
+
+    return "\n".join(out) if out else "Аномалий не обнаружено."
 
 
 async def device_control(entity_id: str, action: str, ident: dict) -> str:

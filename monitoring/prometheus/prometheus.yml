@@ -15,9 +15,11 @@ scrape_configs:
         labels:
           instance: rockyos
 
-  # Home Assistant — включим, когда появится (нужен long-lived token)
-  # - job_name: homeassistant
-  #   metrics_path: /api/prometheus
-  #   bearer_token: "<HA_TOKEN>"
-  #   static_configs:
-  #     - targets: ["host.docker.internal:8123"]
+  - job_name: homeassistant
+    metrics_path: /api/prometheus
+    authorization:
+      credentials_file: /etc/prometheus/ha_token
+    static_configs:
+      - targets: ["host.docker.internal:8123"]
+        labels:
+          instance: rockyos
