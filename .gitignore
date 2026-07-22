@@ -34,3 +34,4 @@ __pycache__/
 *.tmp
 *~
 ha_token
+models/

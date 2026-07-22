@@ -16,12 +16,13 @@
   },
   "tokens": {
     "<openssl rand -hex 32>": {
-      "role": "user",
-      "name": "dima"
-    },
-    "<openssl rand -hex 32>": {
       "role": "admin",
       "name": "tigra"
     }
+  },
+  "embeddings": {
+    "model": "intfloat/multilingual-e5-small",
+    "cache_folder": "/opt/homegate/models",
+    "dim": 384
   }
 }

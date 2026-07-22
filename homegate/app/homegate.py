@@ -105,19 +105,40 @@ async def _qdrant(method: str, path: str, payload: dict | None = None) -> dict:
         return r.json()
 
 
-def _embed(text: str) -> list[float]:
-    """
-    Заглушка эмбеддинга: детерминированный псевдовектор.
-    ЗАМЕНИТЬ на реальную модель, когда определимся (см. README, раздел TODO).
-    Хранение и поиск работают, но семантика поиска будет слабой.
-    """
-    import hashlib
+_MODEL = None
 
-    h = hashlib.sha256(text.encode()).digest()
-    raw = [(b - 128) / 128.0 for b in h] * 32
-    vec = raw[:1024]
-    norm = sum(v * v for v in vec) ** 0.5 or 1.0
-    return [v / norm for v in vec]
+
+def _get_model():
+    """Ленивая загрузка модели: старт гейта не должен ждать 15 секунд."""
+    global _MODEL
+    if _MODEL is None:
+        from sentence_transformers import SentenceTransformer
+
+        log.info("загружаю модель эмбеддингов...")
+        _MODEL = SentenceTransformer(
+            CFG.get("embeddings", {}).get("model", "intfloat/multilingual-e5-small"),
+            cache_folder=CFG.get("embeddings", {}).get(
+                "cache_folder", "/opt/homegate/models"
+            ),
+        )
+        log.info(
+            "модель загружена, размерность %s",
+            _MODEL.get_sentence_embedding_dimension(),
+        )
+    return _MODEL
+
+
+def _embed(text: str, is_query: bool = False) -> list[float]:
+    """
+    Векторизация текста моделью multilingual-e5-small (384 измерения).
+
+    E5 требует префиксов: query: для поискового запроса и passage: для
+    сохраняемого текста. Без них качество заметно падает — особенность
+    обучения модели.
+    """
+    prefix = "query: " if is_query else "passage: "
+    vec = _get_model().encode(prefix + text, normalize_embeddings=True)
+    return vec.tolist()
 
 
 async def memory_save(text: str, tags: list[str] | None, ident: dict) -> str:
@@ -147,7 +168,7 @@ async def memory_search(query: str, limit: int = 5) -> str:
     res = await _qdrant(
         "POST",
         f"/collections/{QDRANT_COLLECTION}/points/search",
-        {"vector": _embed(query), "limit": limit, "with_payload": True},
+        {"vector": _embed(query, is_query=True), "limit": limit, "with_payload": True},
     )
     hits = res.get("result", [])
     if not hits:
