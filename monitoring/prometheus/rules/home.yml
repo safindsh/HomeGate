@@ -1,0 +1,69 @@
+groups:
+  - name: дом
+    interval: 1m
+    rules:
+      - alert: ПОЖАР
+        expr: hass_binary_sensor_state{entity=~".*smoke.*"} == 1
+        for: 0m
+        labels:
+          severity: critical
+        annotations:
+          summary: "СРАБОТАЛ ДАТЧИК ДЫМА"
+          description: "{{ $labels.friendly_name }} — тревога. Сирена звучит на самом датчике."
+
+      - alert: ВоротаДолгоОткрыты
+        expr: hass_cover_state == 1
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Ворота открыты больше 15 минут"
+          description: "{{ $labels.friendly_name }}"
+
+      - alert: НапряжениеВнеНормы
+        expr: avg(hass_sensor_voltage_v) < 200 or avg(hass_sensor_voltage_v) > 245
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Напряжение в сети вне нормы"
+          description: "Сейчас {{ $value | printf \"%.0f\" }} В (норма 200–245)"
+
+  - name: сервер
+    interval: 1m
+    rules:
+      - alert: ДомНеОтвечает
+        expr: up{job="homeassistant"} == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Home Assistant не отвечает"
+          description: "Управление домом недоступно уже 5 минут"
+
+      - alert: МалоМестаНаДиске
+        expr: (1 - node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) * 100 > 85
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Диск заполнен на {{ $value | printf \"%.0f\" }}%"
+          description: "Осталось меньше 15% свободного места"
+
+      - alert: ПерегревCPU
+        expr: max(node_hwmon_temp_celsius) > 85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Процессор греется: {{ $value | printf \"%.0f\" }}°C"
+          description: "Проверить вентиляцию"
+
+      - alert: МалоПамяти
+        expr: (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100 > 92
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Память занята на {{ $value | printf \"%.0f\" }}%"
+          description: "Возможны сбои сервисов"

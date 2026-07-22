@@ -41,6 +41,55 @@ services:
       driver: json-file
       options: {max-size: "10m", max-file: "3"}
 
+
+  loki:
+    image: grafana/loki:3.3.2
+    container_name: loki
+    restart: unless-stopped
+    user: "0:0"
+    ports:
+      - "127.0.0.1:3100:3100"
+    command: -config.file=/etc/loki/loki-config.yml
+    volumes:
+      - /opt/monitoring/loki:/etc/loki:Z
+      - loki_data:/loki
+    logging:
+      driver: json-file
+      options: {max-size: "10m", max-file: "3"}
+
+  promtail:
+    image: grafana/promtail:3.3.2
+    container_name: promtail
+    restart: unless-stopped
+    depends_on: [loki]
+    command: -config.file=/etc/promtail/promtail-config.yml
+    volumes:
+      - /opt/monitoring/promtail:/etc/promtail:Z
+      - /var/log:/var/log:ro
+      - /opt/homegate/logs:/opt/homegate/logs:ro
+      - /opt/homeassistant/config:/opt/homeassistant/config:ro
+    logging:
+      driver: json-file
+      options: {max-size: "10m", max-file: "3"}
+
+  alertmanager:
+    image: prom/alertmanager:latest
+    container_name: alertmanager
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:9093:9093"
+    volumes:
+      - /opt/monitoring/alertmanager:/etc/alertmanager:Z
+      - alertmanager_data:/alertmanager
+    command:
+      - "--config.file=/etc/alertmanager/alertmanager.yml"
+      - "--storage.path=/alertmanager"
+    logging:
+      driver: json-file
+      options: {max-size: "10m", max-file: "3"}
+
 volumes:
   prometheus_data:
   grafana_data:
+  loki_data:
+  alertmanager_data:

@@ -35,3 +35,4 @@ __pycache__/
 *~
 ha_token
 models/
+bot_token

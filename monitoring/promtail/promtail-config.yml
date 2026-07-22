@@ -1,0 +1,61 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+  log_level: warn
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  # Логи MCP-гейта
+  - job_name: homegate
+    static_configs:
+      - targets: [localhost]
+        labels:
+          job: homegate
+          host: rockyos
+          __path__: /var/log/homegate/*.log
+
+  # Аудит: кто что вызывал через гейт
+  - job_name: homegate-audit
+    static_configs:
+      - targets: [localhost]
+        labels:
+          job: audit
+          host: rockyos
+          __path__: /var/log/homegate/audit.log
+
+  # nginx
+  - job_name: nginx
+    static_configs:
+      - targets: [localhost]
+        labels:
+          job: nginx
+          host: rockyos
+          __path__: /var/log/nginx/*.log
+
+  # Home Assistant
+  - job_name: homeassistant
+    static_configs:
+      - targets: [localhost]
+        labels:
+          job: homeassistant
+          host: rockyos
+          __path__: /var/log/ha/*.log
+
+  # Системный журнал
+  - job_name: journal
+    journal:
+      path: /var/log/journal
+      max_age: 24h
+      labels:
+        job: systemd
+        host: rockyos
+    relabel_configs:
+      - source_labels: ["__journal__systemd_unit"]
+        target_label: unit
+      - source_labels: ["__journal_priority_keyword"]
+        target_label: level
