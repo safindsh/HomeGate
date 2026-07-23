@@ -2,323 +2,396 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Дом</title>
 <style>
 :root{
-  --bg:#0f1115; --card:#181b21; --card2:#1e222a; --line:#282d37;
-  --tx:#e8eaed; --dim:#8b919c; --acc:#5b9dd9;
-  --ok:#4a9d5f; --warn:#c9a227; --off:#4a4f5a; --bad:#c05050;
+  --bg:#0f1216; --card:#171b21; --card2:#1d222a; --line:#252b34;
+  --tx:#e8ecf1; --tx2:#9aa4b2; --tx3:#6b7684;
+  --ok:#3fb950; --warn:#d29922; --bad:#f85149; --idle:#4b5563;
+  --acc:#58a6ff;
 }
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--tx);
-  font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
-.wrap{max-width:1000px;margin:0 auto;padding:24px 16px 48px}
-header{display:flex;align-items:baseline;justify-content:space-between;
-  margin-bottom:24px;flex-wrap:wrap;gap:8px}
-h1{font-size:1.5rem;font-weight:600;margin:0;letter-spacing:-.01em}
-.upd{font-size:.8rem;color:var(--dim)}
-.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(220px,1fr))}
-.sec{margin-bottom:28px}
-.sec h2{font-size:.78rem;text-transform:uppercase;letter-spacing:.08em;
-  color:var(--dim);font-weight:600;margin:0 0 10px;padding-left:2px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:10px;
-  padding:14px 16px;display:flex;flex-direction:column;gap:6px}
-.card .nm{font-size:.88rem;color:var(--dim);line-height:1.35}
-.card .vl{font-size:1.35rem;font-weight:600;letter-spacing:-.02em}
-.card.wide{grid-column:1/-1}
-.st{display:inline-flex;align-items:center;gap:7px;font-size:1.05rem;font-weight:500}
-.dot{width:9px;height:9px;border-radius:50%;flex:none}
-.d-ok{background:var(--ok)} .d-off{background:var(--off)}
-.d-warn{background:var(--warn)} .d-bad{background:var(--bad)}
-.muted{color:var(--dim)}
-.row{display:flex;justify-content:space-between;align-items:center;
-  padding:9px 0;border-bottom:1px solid var(--line)}
-.row:last-child{border-bottom:none}
-.row .l{font-size:.9rem}
-.row .r{font-size:.9rem;color:var(--dim)}
-nav{display:flex;gap:10px;margin-top:28px;flex-wrap:wrap}
-nav a{flex:1;min-width:150px;padding:13px 16px;background:var(--card);
-  border:1px solid var(--line);border-radius:10px;color:var(--tx);
-  text-decoration:none;font-size:.92rem;transition:background .15s}
-nav a:hover{background:var(--card2)}
-nav a small{display:block;color:var(--dim);font-size:.78rem;margin-top:2px}
-.err{background:#2a1d1d;border-color:#4a2c2c;color:#e0a0a0;
-  padding:12px 16px;border-radius:10px;font-size:.88rem}
-footer{margin-top:32px;color:var(--dim);font-size:.78rem;text-align:center}
-.chart{background:var(--card);border:1px solid var(--line);border-radius:10px;
-  padding:14px 16px 8px;margin-bottom:12px}
-.chart h3{margin:0 0 2px;font-size:.9rem;font-weight:600}
-.chart .sub{color:var(--dim);font-size:.78rem;margin-bottom:10px}
-.chart svg{display:block;width:100%;height:120px;overflow:visible}
-.chart .gl{stroke:var(--line);stroke-width:1}
-.chart .lb{fill:var(--dim);font-size:10px}
-.chart .empty{color:var(--dim);font-size:.85rem;padding:14px 0}
+body{
+  margin:0; background:var(--bg); color:var(--tx);
+  font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Ubuntu,sans-serif;
+  padding:20px 16px 48px;
+}
+.wrap{max-width:1080px;margin:0 auto}
+
+/* ── Шапка ───────────────────────────────────────── */
+header{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:18px}
+h1{font-size:22px;margin:0;font-weight:600;letter-spacing:-.2px}
+.upd{color:var(--tx3);font-size:13px;margin-left:auto}
+
+/* Кнопки перехода — сразу видно, что это кнопки */
+.links{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:22px}
+.btn{
+  display:inline-flex;align-items:center;gap:8px;
+  background:var(--card2);color:var(--tx);text-decoration:none;
+  border:1px solid var(--line);border-radius:10px;
+  padding:11px 16px;font-size:14px;font-weight:500;
+  transition:.15s;
+}
+.btn:hover{background:#232a34;border-color:#3a434f;transform:translateY(-1px)}
+.btn .ic{font-size:16px;line-height:1}
+.btn.pri{background:var(--acc);border-color:var(--acc);color:#07121f;font-weight:600}
+.btn.pri:hover{background:#79b8ff;border-color:#79b8ff}
+
+/* ── Крупная сводка ──────────────────────────────── */
+.hero{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+  gap:12px;margin-bottom:22px;
+}
+.stat{
+  background:var(--card);border:1px solid var(--line);border-radius:12px;
+  padding:14px 16px;
+}
+.stat .lbl{color:var(--tx3);font-size:12px;text-transform:uppercase;letter-spacing:.4px}
+.stat .val{font-size:26px;font-weight:600;margin-top:4px;letter-spacing:-.5px}
+.stat .sub{color:var(--tx2);font-size:12px;margin-top:2px}
+.stat.good .val{color:var(--ok)} .stat.warn .val{color:var(--warn)}
+.stat.bad .val{color:var(--bad)}
+
+/* ── Карточки-разделы ────────────────────────────── */
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.card h2{
+  font-size:13px;font-weight:600;margin:0;padding:13px 16px;
+  color:var(--tx2);text-transform:uppercase;letter-spacing:.5px;
+  border-bottom:1px solid var(--line);
+  display:flex;align-items:center;gap:8px;
+}
+.card h2 .cnt{margin-left:auto;color:var(--tx3);font-weight:400;text-transform:none;letter-spacing:0}
+.rows{padding:6px 0}
+
+/* Строка данных — намеренно НЕ похожа на кнопку */
+.row{
+  display:flex;align-items:center;gap:12px;
+  padding:9px 16px;
+}
+.row:hover{background:rgba(255,255,255,.02)}
+.row .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row .vl{font-variant-numeric:tabular-nums;color:var(--tx2);font-size:14px}
+.row .vl b{color:var(--tx);font-weight:600}
+
+/* Индикатор состояния */
+.dot{width:8px;height:8px;border-radius:50%;flex:none;background:var(--idle)}
+.dot.on{background:var(--ok);box-shadow:0 0 0 3px rgba(63,185,80,.15)}
+.dot.off{background:var(--idle)}
+.dot.alarm{background:var(--bad);box-shadow:0 0 0 3px rgba(248,81,73,.18)}
+.dot.na{background:transparent;border:1.5px dashed #4b5563}
+
+.pill{
+  font-size:11px;padding:2px 8px;border-radius:20px;
+  background:#232a34;color:var(--tx2);font-weight:500;
+}
+.pill.on{background:rgba(63,185,80,.14);color:var(--ok)}
+.pill.alarm{background:rgba(248,81,73,.15);color:var(--bad)}
+.pill.na{background:transparent;color:var(--tx3);border:1px dashed #3a434f}
+
+.empty{padding:14px 16px;color:var(--tx3);font-size:13px}
+
+/* ── Графики ─────────────────────────────────────── */
+.charts{margin-top:22px;display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:14px}
+.chart-box{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px 10px}
+.chart-box h3{margin:0 0 2px;font-size:14px;font-weight:600}
+.chart-box .hint{color:var(--tx3);font-size:12px;margin-bottom:10px}
+svg{display:block;width:100%;height:auto}
+.err{
+  background:rgba(248,81,73,.1);border:1px solid rgba(248,81,73,.3);
+  color:#ffa198;padding:14px 16px;border-radius:10px;
+}
+footer{margin-top:26px;color:var(--tx3);font-size:12px;text-align:center}
 </style>
 </head>
 <body>
 <div class="wrap">
+
   <header>
     <h1>Дом</h1>
     <span class="upd" id="upd">загрузка…</span>
   </header>
-  <div id="content"><p class="muted">Читаю состояние дома…</p></div>
-  <div id="charts"></div>
-  <nav>
-    <a href="https://192.168.55.120:8443/">Home Assistant<small>управление устройствами</small></a>
-    <a href="/grafana/">Grafana<small>графики и история</small></a>
+
+  <nav class="links">
+    <a class="btn pri" href="/grafana/" target="_blank"><span class="ic">📊</span>Графики в Grafana</a>
+    <a class="btn" href="https://192.168.55.120:8443/" target="_blank"><span class="ic">🏠</span>Home Assistant</a>
+    <a class="btn" href="/grafana/d/homegate-house/" target="_blank"><span class="ic">📈</span>Дашборд «Дом»</a>
   </nav>
+
+  <div id="hero" class="hero"></div>
+  <div id="content"></div>
+  <div id="charts" class="charts"></div>
+
   <footer>Обновляется каждые 30 секунд</footer>
 </div>
+
 <script>
-const OFF = ["unavailable","unknown"];
+const esc = s => String(s).replace(/[&<>"']/g, c =>
+  ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-function esc(s){const d=document.createElement("div");d.textContent=s;return d.innerHTML}
+const NA = v => v === 'unavailable' || v === 'unknown' || v === undefined || v === null;
 
-function fmtName(n){
-  return n.replace(/ Socket 1$/,"").replace(/ Switch 1$/,"")
-          .replace(/ Door 1$/,"").replace(/ Мощность$/,"")
-          .replace(/ Дым$/,"").replace(/ Подсветка$/," (подсветка)")
-          .trim();
-}
-
-function card(name, inner){
-  return `<div class="card"><div class="nm">${esc(fmtName(name))}</div>${inner}</div>`;
-}
-
-function stateLine(cls, text){
-  return `<div class="st"><span class="dot ${cls}"></span>${esc(text)}</div>`;
-}
-
-function render(states){
+/* ── Разбор состояния ─────────────────────────────── */
+function build(list){
   const by = {};
-  states.forEach(s => by[s.entity_id] = s);
-  const get = id => by[id];
-  let html = "";
+  list.forEach(s => by[s.entity_id] = s);
+  const dom = p => list.filter(s => s.entity_id.startsWith(p));
+  const num = id => {
+    const s = by[id]; if (!s || NA(s.state)) return null;
+    const v = parseFloat(s.state); return isNaN(v) ? null : v;
+  };
+  const name = s => s.attributes.friendly_name || s.entity_id;
+  return {by, dom, num, name, list};
+}
 
-  // ── Безопасность ──
-  const smoke = get("binary_sensor.smoke_alarm_smoke");
-  const covers = states.filter(s => s.entity_id.startsWith("cover."));
-  let sec = "";
+/* ── Крупная сводка наверху ───────────────────────── */
+function hero(d){
+  const out = [];
+
+  // Дым — самое важное, всегда первым
+  const smoke = d.by['binary_sensor.smoke_alarm_smoke'];
   if (smoke){
-    const off = OFF.includes(smoke.state);
-    sec += card("Датчик дыма", off
-      ? stateLine("d-warn","нет связи")
-      : stateLine(smoke.state === "on" ? "d-bad" : "d-ok",
-                  smoke.state === "on" ? "ТРЕВОГА" : "норма"));
+    const alarm = smoke.state === 'on';
+    const na = NA(smoke.state);
+    out.push(`<div class="stat ${alarm?'bad':na?'':'good'}">
+      <div class="lbl">Дым</div>
+      <div class="val">${alarm?'ТРЕВОГА':na?'—':'Чисто'}</div>
+      <div class="sub">${na?'датчик не на связи':'датчик исправен'}</div></div>`);
   }
-  covers.forEach(c => {
-    const off = OFF.includes(c.state);
-    const open = c.state === "open";
-    sec += card(c.attributes.friendly_name || c.entity_id, off
-      ? stateLine("d-off","нет связи")
-      : stateLine(open ? "d-warn" : "d-ok", open ? "открыто" : "закрыто"));
-  });
-  if (sec) html += `<div class="sec"><h2>Безопасность</h2><div class="grid">${sec}</div></div>`;
 
-  // ── Свет ──
-  const lights = states.filter(s =>
-    s.entity_id.startsWith("light.") ||
-    (s.entity_id.startsWith("switch.") && /svet|light/i.test(s.entity_id)));
-  let lg = "";
-  lights.forEach(l => {
-    const off = OFF.includes(l.state);
-    lg += card(l.attributes.friendly_name || l.entity_id, off
-      ? stateLine("d-off","нет связи")
-      : stateLine(l.state === "on" ? "d-ok" : "d-off", l.state === "on" ? "включён" : "выключен"));
-  });
-  if (lg) html += `<div class="sec"><h2>Свет</h2><div class="grid">${lg}</div></div>`;
+  // Ворота
+  const gates = d.dom('cover.').filter(s => !NA(s.state));
+  if (gates.length){
+    const open = gates.filter(s => s.state === 'open').length;
+    out.push(`<div class="stat ${open?'warn':'good'}">
+      <div class="lbl">Ворота</div>
+      <div class="val">${open?'Открыты':'Закрыты'}</div>
+      <div class="sub">${gates.length} в работе</div></div>`);
+  }
 
-  // ── Розетки и потребление ──
-  const plugs = states.filter(s =>
-    s.entity_id.startsWith("switch.") &&
-    s.entity_id.endsWith("_socket_1"));
-  let rows = "", total = 0, haveTotal = false;
-  plugs.forEach(p => {
-    const base = p.entity_id.replace(/^switch\./,"").replace(/_socket_1$/,"");
-    const pw = get(`sensor.${base}_power`);
-    const offline = OFF.includes(p.state);
-    let right;
-    if (offline){ right = "нет связи"; }
-    else if (pw && !OFF.includes(pw.state)){
-      const w = parseFloat(pw.state);
-      if (!isNaN(w)){ total += w; haveTotal = true; }
-      right = p.state === "on" ? `включена · ${pw.state} Вт` : "выключена";
-    } else {
-      right = p.state === "on" ? "включена" : "выключена";
+  // Температура и влажность
+  const t = d.num('sensor.temperature_humidity_sensor_temperature');
+  const h = d.num('sensor.temperature_humidity_sensor_humidity');
+  if (t !== null){
+    out.push(`<div class="stat">
+      <div class="lbl">В доме</div>
+      <div class="val">${t.toFixed(1)}°</div>
+      <div class="sub">${h !== null ? 'влажность '+h.toFixed(0)+'%' : 'температура'}</div></div>`);
+  }
+
+  // Суммарная мощность
+  let pw = 0, pn = 0;
+  d.list.forEach(s => {
+    if (s.attributes.device_class === 'power' && !NA(s.state)){
+      const v = parseFloat(s.state); if (!isNaN(v)){ pw += v; pn++; }
     }
-    rows += `<div class="row"><span class="l">${esc(fmtName(p.attributes.friendly_name || base))}</span><span class="r">${esc(right)}</span></div>`;
   });
-  if (rows){
-    let head = "";
-    if (haveTotal) head = card("Сейчас потребляют", `<div class="vl">${total.toFixed(1)} Вт</div>`);
-    html += `<div class="sec"><h2>Розетки</h2><div class="grid">${head}
-      <div class="card wide">${rows}</div></div></div>`;
+  if (pn){
+    out.push(`<div class="stat">
+      <div class="lbl">Потребление</div>
+      <div class="val">${pw.toFixed(0)} Вт</div>
+      <div class="sub">${pn} счётчик${pn===1?'':pn<5?'а':'ов'}</div></div>`);
   }
 
-  // ── Не на связи ──
-  const dead = {};
-  states.forEach(s => {
-    if (!OFF.includes(s.state)) return;
-    const d = s.entity_id.split(".")[0];
-    if (["person","tts","conversation","event","update","backup","sun","weather","stt","todo","scene","script","automation"].includes(d)) return;
-    if (s.entity_id.startsWith("sensor.backup_")) return;
-    let n = s.attributes.friendly_name || s.entity_id;
-    n = n.split(" Ток")[0].split(" Мощность")[0].split(" Напряжение")[0]
-         .split(" Всего энергия")[0].split(" Поведение")[0].split(" Режим")[0]
-         .split(" Блокировка")[0].split(" Socket")[0].split(" Door")[0];
-    dead[n] = (dead[n]||0)+1;
-  });
-  const names = Object.keys(dead).sort();
-  if (names.length){
-    let r = "";
-    names.forEach(n => r += `<div class="row"><span class="l">${esc(n)}</span><span class="r">нет связи</span></div>`);
-    html += `<div class="sec"><h2>Не отвечают</h2><div class="card wide">${r}</div></div>`;
+  // Свет
+  const lights = d.dom('light.').filter(s => !NA(s.state));
+  const lon = lights.filter(s => s.state === 'on').length;
+  if (lights.length){
+    out.push(`<div class="stat ${lon?'warn':''}">
+      <div class="lbl">Свет</div>
+      <div class="val">${lon}</div>
+      <div class="sub">из ${lights.length} включено</div></div>`);
   }
 
-  document.getElementById("content").innerHTML = html || `<p class="muted">Нет данных для показа.</p>`;
-  const t = new Date();
-  document.getElementById("upd").textContent =
-    "обновлено в " + t.toLocaleTimeString("ru-RU",{hour:"2-digit",minute:"2-digit"});
+  // Не на связи
+  const off = d.list.filter(s =>
+    NA(s.state) && /^(light|switch|cover|sensor|binary_sensor)\./.test(s.entity_id));
+  const devs = new Set(off.map(s => s.entity_id.split('.')[1].replace(/_(current|power|voltage|total_energy|door_\d+|switch_\d+|child_lock|socket_\d+|backlight)$/,'')));
+  out.push(`<div class="stat ${devs.size?'warn':'good'}">
+    <div class="lbl">Не на связи</div>
+    <div class="val">${devs.size}</div>
+    <div class="sub">${devs.size?'устройств':'всё на связи'}</div></div>`);
+
+  document.getElementById('hero').innerHTML = out.join('');
+}
+
+/* ── Карточки ─────────────────────────────────────── */
+function card(title, icon, rows, emptyText){
+  if (!rows.length) return `<div class="card"><h2><span>${icon}</span>${title}</h2>
+    <div class="empty">${emptyText||'нет данных'}</div></div>`;
+  return `<div class="card"><h2><span>${icon}</span>${title}
+    <span class="cnt">${rows.length}</span></h2>
+    <div class="rows">${rows.join('')}</div></div>`;
+}
+
+function rowDot(nm, state, opts){
+  const o = opts || {};
+  let cls = 'off', pill = 'pill', txt = o.text || state;
+  if (NA(state)){ cls = 'na'; pill += ' na'; txt = 'не на связи'; }
+  else if (o.alarm && state === 'on'){ cls = 'alarm'; pill += ' alarm'; }
+  else if (state === 'on' || state === 'open'){ cls = 'on'; pill += ' on'; }
+  return `<div class="row"><span class="dot ${cls}"></span>
+    <span class="nm">${esc(nm)}</span>
+    <span class="${pill}">${esc(txt)}</span></div>`;
+}
+
+function rowVal(nm, val, unit, bold){
+  const na = NA(val);
+  return `<div class="row"><span class="dot ${na?'na':'off'}"></span>
+    <span class="nm">${esc(nm)}</span>
+    <span class="vl">${na?'—':(bold?'<b>'+esc(val)+'</b>':esc(val))+' '+esc(unit||'')}</span></div>`;
+}
+
+function render(list){
+  const d = build(list);
+  hero(d);
+  const cards = [];
+
+  // Безопасность
+  const sec = [];
+  const smoke = d.by['binary_sensor.smoke_alarm_smoke'];
+  if (smoke) sec.push(rowDot('Датчик дыма', smoke.state,
+    {alarm:true, text: smoke.state==='on'?'ТРЕВОГА':'чисто'}));
+  d.dom('cover.').forEach(s => sec.push(rowDot(d.name(s), s.state,
+    {text: s.state==='open'?'открыто':s.state==='closed'?'закрыто':s.state})));
+  cards.push(card('Безопасность','🔒',sec));
+
+  // Климат
+  const cl = [];
+  const t = d.by['sensor.temperature_humidity_sensor_temperature'];
+  const h = d.by['sensor.temperature_humidity_sensor_humidity'];
+  const b = d.by['sensor.temperature_humidity_sensor_battery'];
+  if (t) cl.push(rowVal('Температура', t.state, '°C', true));
+  if (h) cl.push(rowVal('Влажность', h.state, '%', true));
+  if (b) cl.push(rowVal('Заряд датчика', b.state, '%'));
+  cards.push(card('Климат','🌡️',cl,'датчиков нет'));
+
+  // Свет
+  const li = d.dom('light.').map(s => rowDot(d.name(s), s.state,
+    {text: s.state==='on'?'включён':'выключен'}));
+  cards.push(card('Свет','💡',li));
+
+  // Розетки — с мощностью в той же строке
+  const sock = [];
+  d.dom('switch.').filter(s => /socket_\d+$/.test(s.entity_id)).forEach(s => {
+    const base = s.entity_id.replace(/^switch\./,'').replace(/_socket_\d+$/,'');
+    const p = d.by['sensor.'+base+'_power'];
+    const nm = d.name(s).replace(/\s*Socket \d+$/i,'');
+    let extra = '';
+    if (p && !NA(p.state) && parseFloat(p.state) > 0) extra = ' · '+p.state+' Вт';
+    const na = NA(s.state);
+    const on = s.state === 'on';
+    cards.length; // no-op
+    sock.push(`<div class="row"><span class="dot ${na?'na':on?'on':'off'}"></span>
+      <span class="nm">${esc(nm)}</span>
+      <span class="pill ${na?'na':on?'on':''}">${na?'не на связи':(on?'включена':'выключена')+extra}</span></div>`);
+  });
+  cards.push(card('Розетки','🔌',sock));
+
+  // Энергия
+  const en = [];
+  d.list.filter(s => s.attributes.device_class === 'energy').forEach(s => {
+    en.push(rowVal(d.name(s).replace(/\s*Общее потребление.*/i,'').replace(/\s*Total Energy$/i,''),
+      s.state, 'кВт·ч'));
+  });
+  cards.push(card('Накопленный расход','⚡',en));
+
+  // Напряжение
+  const vo = d.list.filter(s => s.attributes.device_class === 'voltage')
+    .map(s => rowVal(d.name(s).replace(/\s*Напряжение$/i,'').replace(/\s*Voltage$/i,''),
+      s.state, 'В', true));
+  cards.push(card('Напряжение в сети','🔋',vo));
+
+  document.getElementById('content').innerHTML =
+    `<div class="grid">${cards.join('')}</div>`;
+
+  document.getElementById('upd').textContent =
+    'обновлено в ' + new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
 }
 
 async function load(){
   try{
-    const r = await fetch("/api/home-states", {cache:"no-store"});
-    if (!r.ok) throw new Error("HTTP " + r.status);
+    const r = await fetch('/api/home-states',{cache:'no-store'});
+    if (!r.ok) throw new Error('HTTP '+r.status);
     render(await r.json());
   }catch(e){
-    document.getElementById("content").innerHTML =
+    document.getElementById('content').innerHTML =
       `<div class="err">Не удалось получить состояние дома: ${esc(e.message)}.<br>
        Проверьте, что Home Assistant запущен.</div>`;
-    document.getElementById("upd").textContent = "ошибка связи";
+    document.getElementById('upd').textContent = 'ошибка связи';
   }
 }
 load();
 setInterval(load, 30000);
 
-// ── Графики из истории Home Assistant ──────────────────────────
-// Рисуем сами в SVG: тянуть библиотеку графиков ради двух линий
-// на слабой машине незачем.
-
-const VOLT_IDS = [
-  "sensor.wifi_rozetka_voltage",
-  "sensor.maskitol_v_komnate_gleba_voltage",
-  "sensor.maskitol_v_komnate_iana_voltage",
-  "sensor.moskitol_spalnia_voltage"
-];
-
-const POWER_IDS = [
-  "sensor.wifi_rozetka_power",
-  "sensor.maskitol_v_komnate_gleba_power",
-  "sensor.maskitol_v_komnate_iana_power",
-  "sensor.moskitol_spalnia_power"
-];
-
-// Напряжение меняется постоянно, поэтому график будет всегда.
-// Мощность пишется только при изменении: если все розетки выключены,
-// точек не будет — это не ошибка, график оживёт при нагрузке.
-const CHARTS = [
-  {ids:VOLT_IDS,  mode:"avg", t:"Напряжение в сети",   u:" В",  c:"#5b9dd9", dec:0},
-  {ids:POWER_IDS, mode:"sum", t:"Потребление розеток", u:" Вт", c:"#4a9d5f", dec:1}
-];
-
-function svgLine(points, color){
-  if (points.length < 2) return "";
-  const W = 600, H = 120, pad = 4;
-  const xs = points.map(p => p.t), ys = points.map(p => p.v);
+/* ── Графики за сутки ─────────────────────────────── */
+function sparkline(points, unit, color){
+  if (points.length < 2)
+    return `<div class="hint">Мало точек за сутки — график появится, когда значение начнёт меняться.</div>`;
+  const W = 520, H = 130, P = 26;
+  const xs = points.map(p => p[0]), ys = points.map(p => p[1]);
   const x0 = Math.min(...xs), x1 = Math.max(...xs);
   let y0 = Math.min(...ys), y1 = Math.max(...ys);
-  if (y1 - y0 < 1e-6){ y0 -= 1; y1 += 1; }
-  const sx = t => ((t - x0) / (x1 - x0 || 1)) * W;
-  const sy = v => H - pad - ((v - y0) / (y1 - y0)) * (H - pad*2);
-
-  const d = points.map((p,i) => (i ? "L" : "M") + sx(p.t).toFixed(1) + " " + sy(p.v).toFixed(1)).join(" ");
-  const area = d + ` L${W} ${H} L0 ${H} Z`;
-  const gid = "g" + Math.random().toString(36).slice(2,8);
-
-  const grid = [0, .5, 1].map(f => {
-    const y = pad + f * (H - pad*2);
-    return `<line class="gl" x1="0" y1="${y.toFixed(1)}" x2="${W}" y2="${y.toFixed(1)}"/>`;
-  }).join("");
-
+  if (y1 - y0 < 1e-9){ y0 -= 1; y1 += 1; }
+  const pad = (y1 - y0) * .12; y0 -= pad; y1 += pad;
+  const px = t => P + (W - P - 8) * ((t - x0) / (x1 - x0 || 1));
+  const py = v => H - 20 - (H - 34) * ((v - y0) / (y1 - y0));
+  const dpath = points.map((p,i) => (i?'L':'M') + px(p[0]).toFixed(1) + ' ' + py(p[1]).toFixed(1)).join(' ');
+  const area = dpath + ` L ${px(x1).toFixed(1)} ${H-20} L ${px(x0).toFixed(1)} ${H-20} Z`;
+  const last = ys[ys.length-1];
+  const fmt = v => Math.abs(v) >= 100 ? v.toFixed(0) : v.toFixed(1);
   return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
-    <defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1">
+    <defs><linearGradient id="g${color.slice(1)}" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0%" stop-color="${color}" stop-opacity=".28"/>
       <stop offset="100%" stop-color="${color}" stop-opacity="0"/>
     </linearGradient></defs>
-    ${grid}
-    <path d="${area}" fill="url(#${gid})"/>
-    <path d="${d}" fill="none" stroke="${color}" stroke-width="2"
-          stroke-linejoin="round" stroke-linecap="round"/>
+    <line x1="${P}" y1="${H-20}" x2="${W-8}" y2="${H-20}" stroke="#252b34"/>
+    <path d="${area}" fill="url(#g${color.slice(1)})"/>
+    <path d="${dpath}" fill="none" stroke="${color}" stroke-width="2"
+      stroke-linejoin="round" stroke-linecap="round"/>
+    <circle cx="${px(xs[xs.length-1]).toFixed(1)}" cy="${py(last).toFixed(1)}" r="3.5" fill="${color}"/>
+    <text x="2" y="16" fill="#6b7684" font-size="11">${fmt(y1)}</text>
+    <text x="2" y="${H-24}" fill="#6b7684" font-size="11">${fmt(y0)}</text>
+    <text x="${W-8}" y="16" fill="${color}" font-size="12" text-anchor="end"
+      font-weight="600">${fmt(last)} ${unit}</text>
   </svg>`;
 }
 
-function series(raw){
-  const out = [];
-  (raw || []).forEach(p => {
-    const v = parseFloat(p.state);
-    if (isNaN(v)) return;
-    out.push({t: new Date(p.last_changed || p.last_updated).getTime(), v});
-  });
-  return out.sort((a,b) => a.t - b.t);
-}
-
-function combine(all, mode){
-  // Складываем мощность розеток: у каждой свои моменты замеров,
-  // поэтому идём по общей шкале времени и берём последнее известное
-  // значение каждой розетки.
-  const marks = [...new Set(all.flat().map(p => p.t))].sort((a,b) => a-b);
-  const idx = all.map(() => 0), last = all.map(() => null);
-  const out = [];
-  marks.forEach(t => {
-    let s = 0, n = 0;
-    all.forEach((ser,i) => {
-      while (idx[i] < ser.length && ser[idx[i]].t <= t) last[i] = ser[idx[i]++].v;
-      // пока датчик не отчитался ни разу — не учитываем его,
-      // иначе ноль занижает среднее в начале графика
-      if (last[i] !== null){ s += last[i]; n++; }
-    });
-    if (n) out.push({t, v: mode === "avg" ? s / n : s});
-  });
-  return out;
-}
-
-async function history(ids){
-  const from = new Date(Date.now() - 24*3600*1000).toISOString().replace(/\.\d+Z$/, "Z");
-  const r = await fetch(`/api/home-history/${from}?filter_entity_id=${ids.join(",")}&minimal_response`,
-                        {cache:"no-store"});
-  if (!r.ok) throw new Error("HTTP " + r.status);
-  return r.json();
-}
-
-async function loadCharts(){
-  const box = document.getElementById("charts");
+async function charts(){
+  const box = document.getElementById('charts');
+  const want = [
+    {id:'sensor.temperature_humidity_sensor_temperature', ttl:'Температура', unit:'°C', col:'#f0883e'},
+    {id:'sensor.temperature_humidity_sensor_humidity',    ttl:'Влажность',   unit:'%',  col:'#58a6ff'},
+    {id:'sensor.wifi_rozetka_voltage',                    ttl:'Напряжение',  unit:'В',  col:'#3fb950'},
+  ];
+  const from = new Date(Date.now() - 864e5).toISOString();
   try{
-    const ids = [...new Set(CHARTS.flatMap(c => c.ids))];
-    const data = await history(ids);
+    const r = await fetch(
+      `/api/home-history/${from}?filter_entity_id=${want.map(w=>w.id).join(',')}&minimal_response`,
+      {cache:'no-store'});
+    if (!r.ok) throw new Error('HTTP '+r.status);
+    const data = await r.json();
     const map = {};
-    data.forEach(arr => { if (arr && arr.length) map[arr[0].entity_id] = series(arr); });
-
-    let html = "";
-    CHARTS.forEach(c => {
-      const parts = c.ids.map(i => map[i]).filter(x => x && x.length > 1);
-      const pts = parts.length ? combine(parts, c.mode) : [];
-      const cur = pts.length ? pts[pts.length-1].v.toFixed(c.dec) + c.u : "нет данных";
-      html += `<div class="chart"><h3>${esc(c.t)}</h3>
-        <div class="sub">сейчас ${esc(cur)} · за сутки</div>
-        ${pts.length > 1 ? svgLine(pts, c.c) : `<div class="empty">Пока мало точек для графика</div>`}
-      </div>`;
+    (data||[]).forEach(series => {
+      if (!series || !series.length) return;
+      const eid = series[0].entity_id;
+      map[eid] = series.map(p => {
+        const v = parseFloat(p.state);
+        return isNaN(v) ? null : [new Date(p.last_changed||p.last_updated).getTime(), v];
+      }).filter(Boolean);
     });
-    box.innerHTML = `<div class="sec"><h2>За сутки</h2>${html}</div>`;
+    box.innerHTML = want.map(w => `<div class="chart-box">
+      <h3>${w.ttl}</h3>
+      <div class="hint">за последние сутки</div>
+      ${sparkline(map[w.id]||[], w.unit, w.col)}
+    </div>`).join('');
   }catch(e){
-    box.innerHTML = `<div class="sec"><h2>За сутки</h2>
-      <div class="err">Не удалось получить историю: ${esc(e.message)}</div></div>`;
+    box.innerHTML = `<div class="err">Графики недоступны: ${esc(e.message)}</div>`;
   }
 }
-loadCharts();
-setInterval(loadCharts, 300000);
-
+charts();
+setInterval(charts, 300000);
 </script>
 </body>
 </html>
