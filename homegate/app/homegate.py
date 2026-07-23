@@ -322,7 +322,19 @@ async def home_anomalies() -> str:
     return "\n".join(out) if out else "Аномалий не обнаружено."
 
 
-async def device_control(entity_id: str, action: str, ident: dict) -> str:
+async def device_control(
+    entity_id: str, action: str, ident: dict, dry_run: bool = True
+) -> str:
+    """Управление устройством. По умолчанию НЕ выполняет, а показывает эффект.
+
+    Три проверки идут раньше всего и одинаково работают в обоих режимах:
+    запрещённый домен, белый список, допустимость действия. Отказ должен
+    выглядеть одинаково независимо от dry_run — иначе через сухой прогон
+    можно было бы выяснять, что разрешено, а что нет.
+
+    dry_run=True (по умолчанию): читаем текущее состояние и говорим, что
+    изменится. Ничего не пишем. Явное dry_run=False — выполняем.
+    """
     domain = entity_id.split(".")[0]
     if domain in HA_FORBIDDEN_DOMAINS:
         return (
@@ -338,10 +350,46 @@ async def device_control(entity_id: str, action: str, ident: dict) -> str:
     if action not in ("turn_on", "turn_off", "toggle"):
         return f"ОТКАЗ: недопустимое действие '{action}'."
 
-    await _ha("POST", f"/api/services/{domain}/{action}", {"entity_id": entity_id})
-    audit.info(f"DEVICE_CONTROL user={ident.get('name')} {entity_id} {action}")
-    return f"Выполнено: {entity_id} → {action}"
+    # Текущее состояние нужно обоим режимам: в сухом — чтобы показать эффект,
+    # в боевом — чтобы отличить реальное изменение от команды вхолостую.
+    try:
+        st = await _ha("GET", f"/api/states/{entity_id}")
+        current = st.get("state", "unknown")
+        name = st.get("attributes", {}).get("friendly_name", entity_id)
+    except Exception as e:
+        return f"ОТКАЗ: не удалось прочитать состояние {entity_id}: {e}"
 
+    if current in ("unavailable", "unknown"):
+        return (
+            f"ОТКАЗ: {name} [{entity_id}] сейчас {current} — устройство не на связи. "
+            f"Команда не отправлена."
+        )
+
+    expected = {"turn_on": "on", "turn_off": "off"}.get(action)
+    if expected is None:  # toggle
+        expected = "off" if current == "on" else "on"
+
+    if dry_run:
+        if current == expected:
+            effect = f"состояние НЕ изменится (уже {current})"
+        else:
+            effect = f"{current} → {expected}"
+        audit.info(
+            f"DRY_RUN user={ident.get('name')} {entity_id} {action} ({current}→{expected})"
+        )
+        return (
+            f"СУХОЙ ПРОГОН, ничего не выполнено.\n"
+            f"Устройство: {name} [{entity_id}]\n"
+            f"Действие: {action}\n"
+            f"Эффект: {effect}\n"
+            f"Для выполнения повторить с dry_run=false."
+        )
+
+    await _ha("POST", f"/api/services/{domain}/{action}", {"entity_id": entity_id})
+    audit.info(
+        f"DEVICE_CONTROL user={ident.get('name')} {entity_id} {action} (было {current})"
+    )
+    return f"Выполнено: {name} [{entity_id}] → {action} (было {current}, ожидается {expected})"
 
 # ─────────────────────────── shell (admin only) ───────────────────────────
 
@@ -431,12 +479,21 @@ TOOLS_USER = [
     },
     {
         "name": "device_control",
-        "description": "Управление устройством из белого списка (turn_on/turn_off/toggle).",
+        "description": (
+            "Управление устройством из белого списка (turn_on/turn_off/toggle). "
+            "По умолчанию СУХОЙ ПРОГОН: показывает, что изменится, но не выполняет. "
+            "Для реального выполнения передать dry_run=false."
+        ),
         "inputSchema": {
             "type": "object",
             "properties": {
                 "entity_id": {"type": "string"},
                 "action": {"type": "string", "enum": ["turn_on", "turn_off", "toggle"]},
+                "dry_run": {
+                    "type": "boolean",
+                    "default": True,
+                    "description": "true (по умолчанию) — только показать эффект, ничего не менять.",
+                },
             },
             "required": ["entity_id", "action"],
         },
@@ -526,7 +583,7 @@ async def mcp(request: Request, authorization: str | None = Header(None)):
             elif name == "home_anomalies":
                 text = await home_anomalies()
             elif name == "device_control":
-                text = await device_control(args["entity_id"], args["action"], ident)
+                text = await device_control(args["entity_id"], args["action"], ident, args.get("dry_run", True))
             elif name == "run_command":
                 require_admin(ident)
                 text = run_command(args["command"], ident)
