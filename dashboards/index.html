@@ -1,397 +1,335 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Дом</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HomeGate — Дом Димы</title>
 <style>
-:root{
-  --bg:#0f1216; --card:#171b21; --card2:#1d222a; --line:#252b34;
-  --tx:#e8ecf1; --tx2:#9aa4b2; --tx3:#6b7684;
-  --ok:#3fb950; --warn:#d29922; --bad:#f85149; --idle:#4b5563;
-  --acc:#58a6ff;
-}
-*{box-sizing:border-box}
-body{
-  margin:0; background:var(--bg); color:var(--tx);
-  font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Ubuntu,sans-serif;
-  padding:20px 16px 48px;
-}
-.wrap{max-width:1080px;margin:0 auto}
+  :root {
+    --bg: #0d1117; --bg2: #161b22; --bg3: #21262d;
+    --accent: #58a6ff; --accent2: #3fb950; --warn: #f85149; --yellow: #e3b341;
+    --text: #e6edf3; --muted: #8b949e; --border: #30363d;
+    --radius: 12px; --shadow: 0 4px 24px rgba(0,0,0,0.4);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; min-height: 100vh; }
+  
+  header { background: var(--bg2); border-bottom: 1px solid var(--border); padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; backdrop-filter: blur(10px); }
+  .logo { display: flex; align-items: center; gap: 12px; }
+  .logo-icon { width: 36px; height: 36px; background: linear-gradient(135deg, var(--accent), #1f6feb); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 20px; }
+  .logo h1 { font-size: 18px; font-weight: 700; color: var(--text); }
+  .logo p { font-size: 12px; color: var(--muted); }
+  .header-status { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent2); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+  .update-time { font-size: 11px; color: var(--muted); }
 
-/* ── Шапка ───────────────────────────────────────── */
-header{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:18px}
-h1{font-size:22px;margin:0;font-weight:600;letter-spacing:-.2px}
-.upd{color:var(--tx3);font-size:13px;margin-left:auto}
+  main { padding: 24px; max-width: 1400px; margin: 0 auto; }
 
-/* Кнопки перехода — сразу видно, что это кнопки */
-.links{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:22px}
-.btn{
-  display:inline-flex;align-items:center;gap:8px;
-  background:var(--card2);color:var(--tx);text-decoration:none;
-  border:1px solid var(--line);border-radius:10px;
-  padding:11px 16px;font-size:14px;font-weight:500;
-  transition:.15s;
-}
-.btn:hover{background:#232a34;border-color:#3a434f;transform:translateY(-1px)}
-.btn .ic{font-size:16px;line-height:1}
-.btn.pri{background:var(--acc);border-color:var(--acc);color:#07121f;font-weight:600}
-.btn.pri:hover{background:#79b8ff;border-color:#79b8ff}
+  /* СТАТУСНАЯ СТРОКА */
+  .status-bar { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 24px; }
+  .status-pill { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; display: flex; align-items: center; gap: 10px; transition: border-color 0.2s; }
+  .status-pill:hover { border-color: var(--accent); }
+  .pill-icon { font-size: 22px; }
+  .pill-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+  .pill-value { font-size: 15px; font-weight: 600; }
+  .ok { color: var(--accent2); }
+  .warn { color: var(--warn); }
+  .yellow { color: var(--yellow); }
+  .blue { color: var(--accent); }
 
-/* ── Крупная сводка ──────────────────────────────── */
-.hero{
-  display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
-  gap:12px;margin-bottom:22px;
-}
-.stat{
-  background:var(--card);border:1px solid var(--line);border-radius:12px;
-  padding:14px 16px;
-}
-.stat .lbl{color:var(--tx3);font-size:12px;text-transform:uppercase;letter-spacing:.4px}
-.stat .val{font-size:26px;font-weight:600;margin-top:4px;letter-spacing:-.5px}
-.stat .sub{color:var(--tx2);font-size:12px;margin-top:2px}
-.stat.good .val{color:var(--ok)} .stat.warn .val{color:var(--warn)}
-.stat.bad .val{color:var(--bad)}
+  /* GRID */
+  .grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 16px; }
+  .col-4 { grid-column: span 4; }
+  .col-6 { grid-column: span 6; }
+  .col-8 { grid-column: span 8; }
+  .col-12 { grid-column: span 12; }
+  @media(max-width:900px) { .col-4,.col-6,.col-8 { grid-column: span 12; } }
+  @media(max-width:600px) { .col-4 { grid-column: span 12; } }
 
-/* ── Карточки-разделы ────────────────────────────── */
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}
-.card h2{
-  font-size:13px;font-weight:600;margin:0;padding:13px 16px;
-  color:var(--tx2);text-transform:uppercase;letter-spacing:.5px;
-  border-bottom:1px solid var(--line);
-  display:flex;align-items:center;gap:8px;
-}
-.card h2 .cnt{margin-left:auto;color:var(--tx3);font-weight:400;text-transform:none;letter-spacing:0}
-.rows{padding:6px 0}
+  .card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); }
+  .card-title { font-size: 13px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+  .card-title span { font-size: 16px; }
 
-/* Строка данных — намеренно НЕ похожа на кнопку */
-.row{
-  display:flex;align-items:center;gap:12px;
-  padding:9px 16px;
-}
-.row:hover{background:rgba(255,255,255,.02)}
-.row .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.row .vl{font-variant-numeric:tabular-nums;color:var(--tx2);font-size:14px}
-.row .vl b{color:var(--tx);font-weight:600}
+  /* КАМЕРЫ */
+  .cameras { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  @media(max-width:700px) { .cameras { grid-template-columns: 1fr 1fr; } }
+  .cam-tile { background: var(--bg3); border-radius: 8px; aspect-ratio: 16/9; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; border: 1px solid var(--border); position: relative; overflow: hidden; cursor: pointer; transition: border-color 0.2s; }
+  .cam-tile:hover { border-color: var(--accent); }
+  .cam-tile img { width: 100%; height: 100%; object-fit: cover; border-radius: 8px; }
+  .cam-tile .cam-label { position: absolute; bottom: 6px; left: 8px; font-size: 11px; color: var(--text); background: rgba(0,0,0,0.6); padding: 2px 7px; border-radius: 4px; }
+  .cam-tile .cam-placeholder { text-align: center; }
+  .cam-tile .cam-placeholder .icon { font-size: 28px; opacity: 0.4; }
+  .cam-tile .cam-placeholder p { font-size: 11px; color: var(--muted); margin-top: 4px; }
+  .cam-live { position: absolute; top: 6px; right: 8px; background: var(--warn); color: #fff; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 3px; letter-spacing: 0.5px; }
 
-/* Индикатор состояния */
-.dot{width:8px;height:8px;border-radius:50%;flex:none;background:var(--idle)}
-.dot.on{background:var(--ok);box-shadow:0 0 0 3px rgba(63,185,80,.15)}
-.dot.off{background:var(--idle)}
-.dot.alarm{background:var(--bad);box-shadow:0 0 0 3px rgba(248,81,73,.18)}
-.dot.na{background:transparent;border:1.5px dashed #4b5563}
+  /* СЕНСОРЫ */
+  .sensors { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .sensor-row { background: var(--bg3); border-radius: 8px; padding: 12px 14px; display: flex; justify-content: space-between; align-items: center; }
+  .sensor-name { font-size: 12px; color: var(--muted); }
+  .sensor-val { font-size: 14px; font-weight: 600; }
 
-.pill{
-  font-size:11px;padding:2px 8px;border-radius:20px;
-  background:#232a34;color:var(--tx2);font-weight:500;
-}
-.pill.on{background:rgba(63,185,80,.14);color:var(--ok)}
-.pill.alarm{background:rgba(248,81,73,.15);color:var(--bad)}
-.pill.na{background:transparent;color:var(--tx3);border:1px dashed #3a434f}
+  /* ПЕРЕКЛЮЧАТЕЛИ */
+  .switches { display: flex; flex-direction: column; gap: 8px; }
+  .switch-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .switch-row:last-child { border-bottom: none; }
+  .switch-name { font-size: 13px; }
+  .badge { padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+  .badge-on { background: rgba(63,185,80,0.15); color: var(--accent2); border: 1px solid rgba(63,185,80,0.3); }
+  .badge-off { background: rgba(139,148,158,0.1); color: var(--muted); border: 1px solid var(--border); }
+  .badge-warn { background: rgba(248,81,73,0.15); color: var(--warn); border: 1px solid rgba(248,81,73,0.3); }
 
-.empty{padding:14px 16px;color:var(--tx3);font-size:13px}
+  /* ЭНЕРГИЯ */
+  .energy-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .energy-card { background: var(--bg3); border-radius: 8px; padding: 14px; }
+  .energy-name { font-size: 11px; color: var(--muted); margin-bottom: 6px; }
+  .energy-row { display: flex; justify-content: space-between; font-size: 12px; padding: 2px 0; }
+  .energy-row .label { color: var(--muted); }
+  .energy-total { font-size: 20px; font-weight: 700; color: var(--yellow); margin-bottom: 4px; }
 
-/* ── Графики ─────────────────────────────────────── */
-.charts{margin-top:22px;display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:14px}
-.chart-box{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px 10px}
-.chart-box h3{margin:0 0 2px;font-size:14px;font-weight:600}
-.chart-box .hint{color:var(--tx3);font-size:12px;margin-bottom:10px}
-svg{display:block;width:100%;height:auto}
-.err{
-  background:rgba(248,81,73,.1);border:1px solid rgba(248,81,73,.3);
-  color:#ffa198;padding:14px 16px;border-radius:10px;
-}
-footer{margin-top:26px;color:var(--tx3);font-size:12px;text-align:center}
+  /* GRAFANA */
+  .grafana-frame { width: 100%; border-radius: 8px; border: none; background: var(--bg3); min-height: 200px; }
+
+  /* НАВИГАЦИЯ */
+  .nav-links { display: flex; gap: 10px; flex-wrap: wrap; }
+  .nav-btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg3); color: var(--text); text-decoration: none; font-size: 13px; font-weight: 500; transition: all 0.2s; }
+  .nav-btn:hover { border-color: var(--accent); color: var(--accent); background: rgba(88,166,255,0.05); }
+  .nav-btn .ico { font-size: 16px; }
+
+  /* FOOTER */
+  footer { text-align: center; padding: 24px; color: var(--muted); font-size: 12px; border-top: 1px solid var(--border); margin-top: 32px; }
+
+  .loading { animation: shimmer 1.5s infinite; background: linear-gradient(90deg, var(--bg3) 25%, var(--bg2) 50%, var(--bg3) 75%); background-size: 200% 100%; border-radius: 4px; color: transparent; }
+  @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
 </style>
 </head>
 <body>
-<div class="wrap">
+<header>
+  <div class="logo">
+    <div class="logo-icon">🏠</div>
+    <div>
+      <h1>HomeGate</h1>
+      <p>Дом Димы · Самара</p>
+    </div>
+  </div>
+  <div class="header-status">
+    <div class="dot"></div>
+    <span>Онлайн</span>
+    <span class="update-time" id="upd-time">—</span>
+  </div>
+</header>
 
-  <header>
-    <h1>Дом</h1>
-    <span class="upd" id="upd">загрузка…</span>
-  </header>
+<main>
+  <!-- СТАТУС-СТРОКА -->
+  <div class="status-bar" id="status-bar">
+    <div class="status-pill"><div class="pill-icon">🔥</div><div><div class="pill-label">Дым</div><div class="pill-value" id="s-smoke">—</div></div></div>
+    <div class="status-pill"><div class="pill-icon">🚗</div><div><div class="pill-label">Ворота</div><div class="pill-value" id="s-gate">—</div></div></div>
+    <div class="status-pill"><div class="pill-icon">⚡</div><div><div class="pill-label">Мощность</div><div class="pill-value blue" id="s-power">—</div></div></div>
+    <div class="status-pill"><div class="pill-icon">🔋</div><div><div class="pill-label">Дым батарея</div><div class="pill-value" id="s-battery">—</div></div></div>
+    <div class="status-pill"><div class="pill-icon">🌡️</div><div><div class="pill-label">Температура</div><div class="pill-value" id="s-temp">—</div></div></div>
+    <div class="status-pill"><div class="pill-icon">💧</div><div><div class="pill-label">Влажность</div><div class="pill-value" id="s-hum">—</div></div></div>
+  </div>
 
-  <nav class="links">
-    <a class="btn pri" href="/grafana/" target="_blank"><span class="ic">📊</span>Графики в Grafana</a>
-    <a class="btn" href="https://192.168.55.120:8443/" target="_blank"><span class="ic">🏠</span>Home Assistant</a>
-    <a class="btn" href="/grafana/d/homegate-house/" target="_blank"><span class="ic">📈</span>Дашборд «Дом»</a>
-  </nav>
+  <div class="grid">
 
-  <div id="hero" class="hero"></div>
-  <div id="content"></div>
-  <div id="charts" class="charts"></div>
+    <!-- КАМЕРЫ -->
+    <div class="card col-8">
+      <div class="card-title"><span>📷</span> Камеры Tapo</div>
+      <div class="cameras" id="cameras-grid">
+        <div class="cam-tile"><div class="cam-placeholder"><div class="icon">📷</div><p>Камера 1</p></div></div>
+        <div class="cam-tile"><div class="cam-placeholder"><div class="icon">📷</div><p>Камера 2</p></div></div>
+        <div class="cam-tile"><div class="cam-placeholder"><div class="icon">📷</div><p>Камера 3</p></div></div>
+        <div class="cam-tile"><div class="cam-placeholder"><div class="icon">📷</div><p>Камера 4</p></div></div>
+        <div class="cam-tile"><div class="cam-placeholder"><div class="icon">📷</div><p>Камера 5</p></div></div>
+        <div class="cam-tile"><div class="cam-placeholder"><div class="icon">📷</div><p>Камера 6</p></div></div>
+      </div>
+    </div>
 
-  <footer>Обновляется каждые 30 секунд</footer>
-</div>
+    <!-- БЕЗОПАСНОСТЬ + СВЕТ -->
+    <div class="card col-4">
+      <div class="card-title"><span>🔐</span> Безопасность</div>
+      <div class="switches" id="security-list">
+        <div class="switch-row"><span class="switch-name">🔥 Датчик дыма</span><span class="badge" id="sw-smoke">—</span></div>
+        <div class="switch-row"><span class="switch-name">🚗 Ворота 1</span><span class="badge" id="sw-gate1">—</span></div>
+        <div class="switch-row"><span class="switch-name">🚗 Ворота 2</span><span class="badge" id="sw-gate2">—</span></div>
+        <div class="switch-row"><span class="switch-name">🐾 Кормушка заряд</span><span class="badge" id="sw-feeder">—</span></div>
+        <div class="switch-row"><span class="switch-name">🐾 Кормление</span><span class="badge" id="sw-feeding">—</span></div>
+      </div>
+      <div class="card-title" style="margin-top:20px"><span>💡</span> Свет</div>
+      <div class="switches" id="lights-list">
+        <div class="switch-row"><span class="switch-name">Свет у Яна</span><span class="badge" id="sw-light1">—</span></div>
+        <div class="switch-row"><span class="switch-name">Лампочка 1</span><span class="badge" id="sw-lamp1">—</span></div>
+        <div class="switch-row"><span class="switch-name">Лампочка 2</span><span class="badge" id="sw-lamp2">—</span></div>
+      </div>
+    </div>
+
+    <!-- ЭНЕРГИЯ -->
+    <div class="card col-6">
+      <div class="card-title"><span>⚡</span> Энергия и мощность</div>
+      <div class="energy-grid" id="energy-grid">
+        <div class="energy-card">
+          <div class="energy-name">Exclusive шкаф</div>
+          <div class="energy-total" id="e-shkaf-p">— W</div>
+          <div class="energy-row"><span class="label">Напряжение</span><span id="e-shkaf-v">—</span></div>
+          <div class="energy-row"><span class="label">Ток</span><span id="e-shkaf-a">—</span></div>
+          <div class="energy-row"><span class="label">Всего</span><span id="e-shkaf-t">—</span></div>
+        </div>
+        <div class="energy-card">
+          <div class="energy-name">WiFi-розетка</div>
+          <div class="energy-total" id="e-wifi-p">— W</div>
+          <div class="energy-row"><span class="label">Напряжение</span><span id="e-wifi-v">—</span></div>
+          <div class="energy-row"><span class="label">Ток</span><span id="e-wifi-a">—</span></div>
+          <div class="energy-row"><span class="label">Всего</span><span id="e-wifi-t">—</span></div>
+        </div>
+        <div class="energy-card">
+          <div class="energy-name">Насос бассейна</div>
+          <div class="energy-total" id="e-pool-p">— W</div>
+          <div class="energy-row"><span class="label">Напряжение</span><span id="e-pool-v">—</span></div>
+          <div class="energy-row"><span class="label">Состояние</span><span id="e-pool-s">—</span></div>
+        </div>
+        <div class="energy-card">
+          <div class="energy-name">Москитолы</div>
+          <div class="energy-total" id="e-mask-p">— W</div>
+          <div class="energy-row"><span class="label">Глеб</span><span id="e-mask-g">—</span></div>
+          <div class="energy-row"><span class="label">Ян</span><span id="e-mask-y">—</span></div>
+          <div class="energy-row"><span class="label">Спальня</span><span id="e-mask-s">—</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- РОЗЕТКИ -->
+    <div class="card col-6">
+      <div class="card-title"><span>🔌</span> Розетки</div>
+      <div class="switches" id="sockets-list">
+        <div class="switch-row"><span class="switch-name">Exclusive шкаф</span><span class="badge" id="sw-shkaf">—</span></div>
+        <div class="switch-row"><span class="switch-name">WiFi-розетка</span><span class="badge" id="sw-wifi">—</span></div>
+        <div class="switch-row"><span class="switch-name">Насос бассейна</span><span class="badge" id="sw-pool">—</span></div>
+        <div class="switch-row"><span class="switch-name">маскитол Глеб</span><span class="badge" id="sw-mask-g">—</span></div>
+        <div class="switch-row"><span class="switch-name">маскитол Ян</span><span class="badge" id="sw-mask-y">—</span></div>
+        <div class="switch-row"><span class="switch-name">москитол спальня</span><span class="badge" id="sw-mask-s">—</span></div>
+      </div>
+    </div>
+
+    <!-- GRAFANA МОЩНОСТЬ -->
+    <div class="card col-12">
+      <div class="card-title"><span>📊</span> Grafana — мониторинг дома</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <iframe class="grafana-frame" height="200"
+          src="/grafana/d/homegate-house/dom?orgId=1&from=now-6h&to=now&theme=dark&kiosk=true&panelId=1&viewPanel=1"
+          title="Дом"></iframe>
+        <iframe class="grafana-frame" height="200"
+          src="/grafana/d/homegate-services/servisy-i-logi?orgId=1&from=now-6h&to=now&theme=dark&kiosk=true"
+          title="Сервисы"></iframe>
+      </div>
+    </div>
+
+    <!-- НАВИГАЦИЯ -->
+    <div class="card col-12">
+      <div class="card-title"><span>🧭</span> Переходы</div>
+      <div class="nav-links">
+        <a class="nav-btn" href="/grafana" target="_blank"><span class="ico">📊</span> Grafana</a>
+        <a class="nav-btn" href="/ha/" target="_blank"><span class="ico">🏠</span> Home Assistant</a>
+        <a class="nav-btn" href="/grafana/d/homegate-house/dom" target="_blank"><span class="ico">🏡</span> Дашборд Дом</a>
+        <a class="nav-btn" href="/grafana/d/homegate-services/servisy-i-logi" target="_blank"><span class="ico">🔧</span> Сервисы</a>
+        <a class="nav-btn" href="/grafana/d/rYdddlPWk/node-exporter-full" target="_blank"><span class="ico">🖥️</span> Сервер</a>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<footer>HomeGate · Самара · <span id="footer-time"></span> · Обновление раз в 30 сек</footer>
 
 <script>
-const esc = s => String(s).replace(/[&<>"']/g, c =>
-  ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const HA = '/api/ha';
 
-const NA = v => v === 'unavailable' || v === 'unknown' || v === undefined || v === null;
-
-/* ── Разбор состояния ─────────────────────────────── */
-function build(list){
-  const by = {};
-  list.forEach(s => by[s.entity_id] = s);
-  const dom = p => list.filter(s => s.entity_id.startsWith(p));
-  const num = id => {
-    const s = by[id]; if (!s || NA(s.state)) return null;
-    const v = parseFloat(s.state); return isNaN(v) ? null : v;
-  };
-  const name = s => s.attributes.friendly_name || s.entity_id;
-  return {by, dom, num, name, list};
+function badge(state, on_label, off_label) {
+  if (state === 'on' || state === 'open' || state === 'true')
+    return `<span class="badge badge-on">${on_label || '● ВКЛ'}</span>`;
+  if (state === 'unavailable')
+    return `<span class="badge badge-warn">Нет связи</span>`;
+  return `<span class="badge badge-off">${off_label || '○ ВЫКЛ'}</span>`;
 }
 
-/* ── Крупная сводка наверху ───────────────────────── */
-function hero(d){
-  const out = [];
+function setEl(id, html) { const e=document.getElementById(id); if(e) e.innerHTML=html; }
 
-  // Дым — самое важное, всегда первым
-  const smoke = d.by['binary_sensor.smoke_alarm_smoke'];
-  if (smoke){
-    const alarm = smoke.state === 'on';
-    const na = NA(smoke.state);
-    out.push(`<div class="stat ${alarm?'bad':na?'':'good'}">
-      <div class="lbl">Дым</div>
-      <div class="val">${alarm?'ТРЕВОГА':na?'—':'Чисто'}</div>
-      <div class="sub">${na?'датчик не на связи':'датчик исправен'}</div></div>`);
-  }
+async function loadStates() {
+  try {
+    const r = await fetch(HA + '/states');
+    if (!r.ok) return;
+    const states = await r.json();
+    const s = {};
+    states.forEach(x => s[x.entity_id] = x.state);
 
-  // Ворота
-  const gates = d.dom('cover.').filter(s => !NA(s.state));
-  if (gates.length){
-    const open = gates.filter(s => s.state === 'open').length;
-    out.push(`<div class="stat ${open?'warn':'good'}">
-      <div class="lbl">Ворота</div>
-      <div class="val">${open?'Открыты':'Закрыты'}</div>
-      <div class="sub">${gates.length} в работе</div></div>`);
-  }
+    // статус-строка
+    const smokeState = s['binary_sensor.smoke_alarm_smoke'];
+    setEl('s-smoke', smokeState === 'on'
+      ? '<span class="warn">⚠ ДЫМИТ!</span>'
+      : '<span class="ok">Норма</span>');
+    setEl('s-gate', s['cover.wifi_garage_door_module_door_1'] === 'closed'
+      ? '<span class="ok">Закрыты</span>'
+      : '<span class="yellow">Открыты</span>');
+    const totalPower = ['sensor.exclusive_shkaf_power','sensor.wifi_rozetka_power',
+      'sensor.maskitol_v_komnate_gleba_power','sensor.maskitol_v_komnate_iana_power',
+      'sensor.moskitol_spalnia_power']
+      .reduce((acc,k) => acc + (parseFloat(s[k])||0), 0);
+    setEl('s-power', totalPower.toFixed(0) + ' W');
+    setEl('s-battery', s['sensor.smoke_alarm_battery_state'] === 'high'
+      ? '<span class="ok">Высокий</span>' : '<span class="warn">Низкий</span>');
+    const temp = s['sensor.temperature_humidity_sensor_temperature'];
+    setEl('s-temp', temp && temp !== 'unavailable' ? temp + ' °C' : '<span class="muted">Нет данных</span>');
+    const hum = s['sensor.temperature_humidity_sensor_humidity'];
+    setEl('s-hum', hum && hum !== 'unavailable' ? hum + ' %' : '<span class="muted">Нет данных</span>');
 
-  // Температура и влажность
-  const t = d.num('sensor.temperature_humidity_sensor_temperature');
-  const h = d.num('sensor.temperature_humidity_sensor_humidity');
-  if (t !== null){
-    out.push(`<div class="stat">
-      <div class="lbl">В доме</div>
-      <div class="val">${t.toFixed(1)}°</div>
-      <div class="sub">${h !== null ? 'влажность '+h.toFixed(0)+'%' : 'температура'}</div></div>`);
-  }
+    // безопасность
+    setEl('sw-smoke', badge(smokeState, '⚠ Дымит!', '✓ Норма'));
+    setEl('sw-gate1', badge(s['cover.smart_garage_door_opener_door_1']||'unavailable', 'Открыты', 'Закрыты'));
+    setEl('sw-gate2', badge(s['cover.wifi_garage_door_module_door_1'], 'Открыты', 'Закрыты'));
+    setEl('sw-feeder', badge(s['binary_sensor.pet_feeder_charging'], 'Заряжается', 'Готова'));
+    setEl('sw-feeding', badge(s['binary_sensor.pet_feeder_feeding'], 'Кормит', 'Ожидание'));
 
-  // Суммарная мощность
-  let pw = 0, pn = 0;
-  d.list.forEach(s => {
-    if (s.attributes.device_class === 'power' && !NA(s.state)){
-      const v = parseFloat(s.state); if (!isNaN(v)){ pw += v; pn++; }
-    }
-  });
-  if (pn){
-    out.push(`<div class="stat">
-      <div class="lbl">Потребление</div>
-      <div class="val">${pw.toFixed(0)} Вт</div>
-      <div class="sub">${pn} счётчик${pn===1?'':pn<5?'а':'ов'}</div></div>`);
-  }
+    // свет
+    setEl('sw-light1', badge(s['switch.svet_u_iana_switch_1']));
+    setEl('sw-lamp1', badge(s['light.svetodiodnaia_lampochka']));
+    setEl('sw-lamp2', badge(s['light.svetodiodnaia_lampochka_2']));
 
-  // Свет
-  const lights = d.dom('light.').filter(s => !NA(s.state));
-  const lon = lights.filter(s => s.state === 'on').length;
-  if (lights.length){
-    out.push(`<div class="stat ${lon?'warn':''}">
-      <div class="lbl">Свет</div>
-      <div class="val">${lon}</div>
-      <div class="sub">из ${lights.length} включено</div></div>`);
-  }
+    // розетки
+    setEl('sw-shkaf', badge(s['switch.exclusive_shkaf_socket_1']));
+    setEl('sw-wifi', badge(s['switch.wifi_rozetka_socket_1']));
+    setEl('sw-pool', badge(s['switch.nasos_basseina_socket_1']||'unavailable'));
+    setEl('sw-mask-g', badge(s['switch.maskitol_v_komnate_gleba_socket_1']));
+    setEl('sw-mask-y', badge(s['switch.maskitol_v_komnate_iana_socket_1']));
+    setEl('sw-mask-s', badge(s['switch.moskitol_spalnia_socket_1']));
 
-  // Не на связи
-  const off = d.list.filter(s =>
-    NA(s.state) && /^(light|switch|cover|sensor|binary_sensor)\./.test(s.entity_id));
-  const devs = new Set(off.map(s => s.entity_id.split('.')[1].replace(/_(current|power|voltage|total_energy|door_\d+|switch_\d+|child_lock|socket_\d+|backlight)$/,'')));
-  out.push(`<div class="stat ${devs.size?'warn':'good'}">
-    <div class="lbl">Не на связи</div>
-    <div class="val">${devs.size}</div>
-    <div class="sub">${devs.size?'устройств':'всё на связи'}</div></div>`);
+    // энергия
+    setEl('e-shkaf-p', (s['sensor.exclusive_shkaf_power']||'—') + ' W');
+    setEl('e-shkaf-v', (s['sensor.exclusive_shkaf_voltage']||'—') + ' V');
+    setEl('e-shkaf-a', (s['sensor.exclusive_shkaf_current']||'—') + ' A');
+    setEl('e-shkaf-t', (s['sensor.exclusive_shkaf_total_energy']||'—') + ' kWh');
+    setEl('e-wifi-p', (s['sensor.wifi_rozetka_power']||'—') + ' W');
+    setEl('e-wifi-v', (s['sensor.wifi_rozetka_voltage']||'—') + ' V');
+    setEl('e-wifi-a', (s['sensor.wifi_rozetka_current']||'—') + ' A');
+    setEl('e-wifi-t', (s['sensor.wifi_rozetka_total_energy']||'—') + ' kWh');
+    setEl('e-pool-p', (s['sensor.nasos_basseina_power']||'—') + ' W');
+    setEl('e-pool-v', (s['sensor.nasos_basseina_voltage']||'—') + ' V');
+    setEl('e-pool-s', badge(s['switch.nasos_basseina_socket_1']||'unavailable'));
+    const maskTotal = (parseFloat(s['sensor.maskitol_v_komnate_gleba_power'])||0)
+      + (parseFloat(s['sensor.maskitol_v_komnate_iana_power'])||0)
+      + (parseFloat(s['sensor.moskitol_spalnia_power'])||0);
+    setEl('e-mask-p', maskTotal.toFixed(1) + ' W');
+    setEl('e-mask-g', (s['sensor.maskitol_v_komnate_gleba_power']||'—') + ' W');
+    setEl('e-mask-y', (s['sensor.maskitol_v_komnate_iana_power']||'—') + ' W');
+    setEl('e-mask-s', (s['sensor.moskitol_spalnia_power']||'—') + ' W');
 
-  document.getElementById('hero').innerHTML = out.join('');
+    // время
+    const now = new Date();
+    setEl('upd-time', 'Обновлено: ' + now.toLocaleTimeString('ru-RU'));
+    document.getElementById('footer-time').textContent = now.toLocaleDateString('ru-RU', {weekday:'long', day:'numeric', month:'long'});
+  } catch(e) { console.error('HA fetch error:', e); }
 }
 
-/* ── Карточки ─────────────────────────────────────── */
-function card(title, icon, rows, emptyText){
-  if (!rows.length) return `<div class="card"><h2><span>${icon}</span>${title}</h2>
-    <div class="empty">${emptyText||'нет данных'}</div></div>`;
-  return `<div class="card"><h2><span>${icon}</span>${title}
-    <span class="cnt">${rows.length}</span></h2>
-    <div class="rows">${rows.join('')}</div></div>`;
-}
-
-function rowDot(nm, state, opts){
-  const o = opts || {};
-  let cls = 'off', pill = 'pill', txt = o.text || state;
-  if (NA(state)){ cls = 'na'; pill += ' na'; txt = 'не на связи'; }
-  else if (o.alarm && state === 'on'){ cls = 'alarm'; pill += ' alarm'; }
-  else if (state === 'on' || state === 'open'){ cls = 'on'; pill += ' on'; }
-  return `<div class="row"><span class="dot ${cls}"></span>
-    <span class="nm">${esc(nm)}</span>
-    <span class="${pill}">${esc(txt)}</span></div>`;
-}
-
-function rowVal(nm, val, unit, bold){
-  const na = NA(val);
-  return `<div class="row"><span class="dot ${na?'na':'off'}"></span>
-    <span class="nm">${esc(nm)}</span>
-    <span class="vl">${na?'—':(bold?'<b>'+esc(val)+'</b>':esc(val))+' '+esc(unit||'')}</span></div>`;
-}
-
-function render(list){
-  const d = build(list);
-  hero(d);
-  const cards = [];
-
-  // Безопасность
-  const sec = [];
-  const smoke = d.by['binary_sensor.smoke_alarm_smoke'];
-  if (smoke) sec.push(rowDot('Датчик дыма', smoke.state,
-    {alarm:true, text: smoke.state==='on'?'ТРЕВОГА':'чисто'}));
-  d.dom('cover.').forEach(s => sec.push(rowDot(d.name(s), s.state,
-    {text: s.state==='open'?'открыто':s.state==='closed'?'закрыто':s.state})));
-  cards.push(card('Безопасность','🔒',sec));
-
-  // Климат
-  const cl = [];
-  const t = d.by['sensor.temperature_humidity_sensor_temperature'];
-  const h = d.by['sensor.temperature_humidity_sensor_humidity'];
-  const b = d.by['sensor.temperature_humidity_sensor_battery'];
-  if (t) cl.push(rowVal('Температура', t.state, '°C', true));
-  if (h) cl.push(rowVal('Влажность', h.state, '%', true));
-  if (b) cl.push(rowVal('Заряд датчика', b.state, '%'));
-  cards.push(card('Климат','🌡️',cl,'датчиков нет'));
-
-  // Свет
-  const li = d.dom('light.').map(s => rowDot(d.name(s), s.state,
-    {text: s.state==='on'?'включён':'выключен'}));
-  cards.push(card('Свет','💡',li));
-
-  // Розетки — с мощностью в той же строке
-  const sock = [];
-  d.dom('switch.').filter(s => /socket_\d+$/.test(s.entity_id)).forEach(s => {
-    const base = s.entity_id.replace(/^switch\./,'').replace(/_socket_\d+$/,'');
-    const p = d.by['sensor.'+base+'_power'];
-    const nm = d.name(s).replace(/\s*Socket \d+$/i,'');
-    let extra = '';
-    if (p && !NA(p.state) && parseFloat(p.state) > 0) extra = ' · '+p.state+' Вт';
-    const na = NA(s.state);
-    const on = s.state === 'on';
-    cards.length; // no-op
-    sock.push(`<div class="row"><span class="dot ${na?'na':on?'on':'off'}"></span>
-      <span class="nm">${esc(nm)}</span>
-      <span class="pill ${na?'na':on?'on':''}">${na?'не на связи':(on?'включена':'выключена')+extra}</span></div>`);
-  });
-  cards.push(card('Розетки','🔌',sock));
-
-  // Энергия
-  const en = [];
-  d.list.filter(s => s.attributes.device_class === 'energy').forEach(s => {
-    en.push(rowVal(d.name(s).replace(/\s*Общее потребление.*/i,'').replace(/\s*Total Energy$/i,''),
-      s.state, 'кВт·ч'));
-  });
-  cards.push(card('Накопленный расход','⚡',en));
-
-  // Напряжение
-  const vo = d.list.filter(s => s.attributes.device_class === 'voltage')
-    .map(s => rowVal(d.name(s).replace(/\s*Напряжение$/i,'').replace(/\s*Voltage$/i,''),
-      s.state, 'В', true));
-  cards.push(card('Напряжение в сети','🔋',vo));
-
-  document.getElementById('content').innerHTML =
-    `<div class="grid">${cards.join('')}</div>`;
-
-  document.getElementById('upd').textContent =
-    'обновлено в ' + new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
-}
-
-async function load(){
-  try{
-    const r = await fetch('/api/home-states',{cache:'no-store'});
-    if (!r.ok) throw new Error('HTTP '+r.status);
-    render(await r.json());
-  }catch(e){
-    document.getElementById('content').innerHTML =
-      `<div class="err">Не удалось получить состояние дома: ${esc(e.message)}.<br>
-       Проверьте, что Home Assistant запущен.</div>`;
-    document.getElementById('upd').textContent = 'ошибка связи';
-  }
-}
-load();
-setInterval(load, 30000);
-
-/* ── Графики за сутки ─────────────────────────────── */
-function sparkline(points, unit, color){
-  if (points.length < 2)
-    return `<div class="hint">Мало точек за сутки — график появится, когда значение начнёт меняться.</div>`;
-  const W = 520, H = 130, P = 26;
-  const xs = points.map(p => p[0]), ys = points.map(p => p[1]);
-  const x0 = Math.min(...xs), x1 = Math.max(...xs);
-  let y0 = Math.min(...ys), y1 = Math.max(...ys);
-  if (y1 - y0 < 1e-9){ y0 -= 1; y1 += 1; }
-  const pad = (y1 - y0) * .12; y0 -= pad; y1 += pad;
-  const px = t => P + (W - P - 8) * ((t - x0) / (x1 - x0 || 1));
-  const py = v => H - 20 - (H - 34) * ((v - y0) / (y1 - y0));
-  const dpath = points.map((p,i) => (i?'L':'M') + px(p[0]).toFixed(1) + ' ' + py(p[1]).toFixed(1)).join(' ');
-  const area = dpath + ` L ${px(x1).toFixed(1)} ${H-20} L ${px(x0).toFixed(1)} ${H-20} Z`;
-  const last = ys[ys.length-1];
-  const fmt = v => Math.abs(v) >= 100 ? v.toFixed(0) : v.toFixed(1);
-  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
-    <defs><linearGradient id="g${color.slice(1)}" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="${color}" stop-opacity=".28"/>
-      <stop offset="100%" stop-color="${color}" stop-opacity="0"/>
-    </linearGradient></defs>
-    <line x1="${P}" y1="${H-20}" x2="${W-8}" y2="${H-20}" stroke="#252b34"/>
-    <path d="${area}" fill="url(#g${color.slice(1)})"/>
-    <path d="${dpath}" fill="none" stroke="${color}" stroke-width="2"
-      stroke-linejoin="round" stroke-linecap="round"/>
-    <circle cx="${px(xs[xs.length-1]).toFixed(1)}" cy="${py(last).toFixed(1)}" r="3.5" fill="${color}"/>
-    <text x="2" y="16" fill="#6b7684" font-size="11">${fmt(y1)}</text>
-    <text x="2" y="${H-24}" fill="#6b7684" font-size="11">${fmt(y0)}</text>
-    <text x="${W-8}" y="16" fill="${color}" font-size="12" text-anchor="end"
-      font-weight="600">${fmt(last)} ${unit}</text>
-  </svg>`;
-}
-
-async function charts(){
-  const box = document.getElementById('charts');
-  const want = [
-    {id:'sensor.temperature_humidity_sensor_temperature', ttl:'Температура', unit:'°C', col:'#f0883e'},
-    {id:'sensor.temperature_humidity_sensor_humidity',    ttl:'Влажность',   unit:'%',  col:'#58a6ff'},
-    {id:'sensor.wifi_rozetka_voltage',                    ttl:'Напряжение',  unit:'В',  col:'#3fb950'},
-  ];
-  const from = new Date(Date.now() - 864e5).toISOString();
-  try{
-    const r = await fetch(
-      `/api/home-history/${from}?filter_entity_id=${want.map(w=>w.id).join(',')}&minimal_response`,
-      {cache:'no-store'});
-    if (!r.ok) throw new Error('HTTP '+r.status);
-    const data = await r.json();
-    const map = {};
-    (data||[]).forEach(series => {
-      if (!series || !series.length) return;
-      const eid = series[0].entity_id;
-      map[eid] = series.map(p => {
-        const v = parseFloat(p.state);
-        return isNaN(v) ? null : [new Date(p.last_changed||p.last_updated).getTime(), v];
-      }).filter(Boolean);
-    });
-    box.innerHTML = want.map(w => `<div class="chart-box">
-      <h3>${w.ttl}</h3>
-      <div class="hint">за последние сутки</div>
-      ${sparkline(map[w.id]||[], w.unit, w.col)}
-    </div>`).join('');
-  }catch(e){
-    box.innerHTML = `<div class="err">Графики недоступны: ${esc(e.message)}</div>`;
-  }
-}
-charts();
-setInterval(charts, 300000);
+loadStates();
+setInterval(loadStates, 30000);
 </script>
 </body>
 </html>

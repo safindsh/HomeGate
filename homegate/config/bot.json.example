@@ -1,0 +1,13 @@
+{
+  "token": "ЗДЕСЬ_ТОКЕН_БОТА",
+  "chat_id": "ЗДЕСЬ_CHAT_ID",
+  "_comment": "write_whitelist - только эти сущности бот может переключать. Меняй список и делай systemctl restart homegate-bot",
+  "write_whitelist": [
+    "switch.maskitol_v_komnate_gleba_socket_1",
+    "switch.maskitol_v_komnate_iana_socket_1",
+    "switch.moskitol_spalnia_socket_1",
+    "switch.svet_u_iana_switch_1",
+    "light.svetodiodnaia_lampochka",
+    "light.svetodiodnaia_lampochka_2"
+  ]
+}

@@ -1,38 +1,36 @@
-# ── СЕКРЕТЫ — никогда не коммитить ──
-.env
-*.env
+
 !*.env.example
-config.json
 !config.example.json
-*.key
-*.pem
-*.crt
-secrets/
-*_token
-*token.txt
-
-# ── данные ──
-storage/
-snapshots/
-*.db
-*.sqlite
-
-# ── логи ──
-*.log
-logs/
-
-# ── питон ──
-venv/
-__pycache__/
-*.pyc
-.pytest_cache/
-
+# ── СЕКРЕТЫ — никогда не коммитить ──
 # ── бэкапы и временное ──
+# ── данные ──
+# ── логи ──
+# ── питон ──
 *.bak
 *.bak[0-9]
+*.crt
+*.db
+*.env
+*.key
+*.log
 *.orig
+*.pem
+*.pyc
+*.sqlite
 *.tmp
+*_token
+*token.txt
 *~
-ha_token
-models/
+.env
+.pytest_cache/
+__pycache__/
+bot.json
 bot_token
+config.json
+ha_token
+logs/
+models/
+secrets/
+snapshots/
+storage/
+venv/

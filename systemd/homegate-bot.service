@@ -1,0 +1,16 @@
+[Unit]
+Description=HomeGate Telegram Bot
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/homegate/bot
+ExecStart=/opt/homegate/venv/bin/python /opt/homegate/bot/tgbot.py
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
