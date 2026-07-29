@@ -11,8 +11,10 @@ HomeGate Telegram Bot
 """
 
 import asyncio
+import crypt
 import json
 import logging
+import secrets
 import time
 from pathlib import Path
 
@@ -23,6 +25,8 @@ import snapshot
 CONFIG_PATH = Path("/opt/homegate/config/config.json")
 BOT_CONFIG_PATH = Path("/opt/homegate/config/bot.json")
 AUDIT_LOG = Path("/opt/homegate/logs/bot_audit.log")
+HTPASSWD = Path("/etc/nginx/.htpasswd_landing")
+LANDING_USER = "safindsh"
 
 FORBIDDEN_DOMAINS = {
     "lock",
@@ -227,6 +231,39 @@ async def do_switch(client, chat_id: int, entity: str, turn_on: bool) -> str:
     return "<code>" + entity + "</code> -> <b>" + ("включено" if turn_on else "выключено") + "</b>"
 
 
+def reset_landing_password() -> str:
+    """Генерирует новый пароль стартовой страницы и переписывает htpasswd."""
+    alphabet = "abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+    new_pw = "".join(secrets.choice(alphabet) for _ in range(16))
+    hashed = crypt.crypt(new_pw, crypt.mksalt(crypt.METHOD_SHA512))
+
+    # бэкап и атомарная запись
+    if HTPASSWD.exists():
+        HTPASSWD.with_suffix(".bak").write_text(
+            HTPASSWD.read_text(encoding="utf-8"), encoding="utf-8"
+        )
+    tmp = HTPASSWD.with_suffix(".tmp")
+    tmp.write_text("{}:{}\n".format(LANDING_USER, hashed), encoding="utf-8")
+    tmp.chmod(0o640)
+    tmp.replace(HTPASSWD)
+
+    # сохраняем в конфиг, чтобы пароль можно было потом посмотреть
+    cfg = json.loads(BOT_CONFIG_PATH.read_text(encoding="utf-8"))
+    cfg["landing_pass"] = new_pw
+    cfg["landing_user"] = LANDING_USER
+    BOT_CONFIG_PATH.write_text(
+        json.dumps(cfg, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+    BOT_CONFIG_PATH.chmod(0o600)
+    return new_pw
+
+
+def current_landing_password():
+    """Текущий пароль из конфига (в htpasswd лежит только хэш)."""
+    cfg = json.loads(BOT_CONFIG_PATH.read_text(encoding="utf-8"))
+    return cfg.get("landing_user", LANDING_USER), cfg.get("landing_pass")
+
+
 async def tg_send_photo(client, chat_id: int, jpeg: bytes, caption: str):
     try:
         await client.post(
@@ -263,7 +300,7 @@ HELP = """<b>HomeGate - бот дома</b>
 /whitelist - чем разрешено управлять
 /вкл entity_id - включить
 /выкл entity_id - выключить
-/кадр - стоп-кадр со всех камер, /кадр 1 - с одной
+/кадр - стоп-кадр со всех камер, /кадр 1 - с одной\n/пароль - показать пароль стартовой страницы\n/пароль новый - сгенерировать другой
 /help - эта справка
 
 Управление работает только для устройств из белого списка.
@@ -320,6 +357,49 @@ async def handle(client, msg: dict):
                           "Укажи entity_id: /выкл switch.wifi_rozetka_socket_1")
             return
         await tg_send(client, chat_id, await do_switch(client, chat_id, args[0], False))
+        return
+
+    if cmd in ("пароль", "password", "сброс"):
+        # без аргумента — показать текущий
+        if not args or args[0].lower() not in ("новый", "new", "сброс", "reset"):
+            user, pw = current_landing_password()
+            if not pw:
+                await tg_send(
+                    client, chat_id,
+                    "Текущий пароль не сохранён — в htpasswd лежит только хэш, "
+                    "восстановить его нельзя.\n\n"
+                    "Сгенерировать новый: <code>/пароль новый</code>",
+                )
+                return
+            audit(chat_id, "PASSWORD_SHOW", user)
+            await tg_send(
+                client, chat_id,
+                "Вход на стартовую страницу:\n\n"
+                "Адрес: <code>https://safindsh.keenetic.link</code>\n"
+                "Логин: <code>{}</code>\n"
+                "Пароль: <code>{}</code>\n\n"
+                "Сменить: <code>/пароль новый</code>".format(user, pw),
+            )
+            return
+
+        # с аргументом — сгенерировать новый
+        try:
+            new_pw = await asyncio.to_thread(reset_landing_password)
+        except Exception as e:
+            audit(chat_id, "PASSWORD_ERROR", str(e))
+            await tg_send(client, chat_id, "Не удалось сменить пароль: {}".format(e))
+            return
+        audit(chat_id, "PASSWORD_RESET", LANDING_USER)
+        await tg_send(
+            client, chat_id,
+            "Пароль стартовой страницы обновлён.\n\n"
+            "Адрес: <code>https://safindsh.keenetic.link</code>\n"
+            "Логин: <code>{}</code>\n"
+            "Пароль: <code>{}</code>\n\n"
+            "Старый пароль больше не работает. "
+            "Сообщение стоит удалить после того, как сохранишь пароль."
+            .format(LANDING_USER, new_pw),
+        )
         return
 
     if cmd in ("кадр", "снимок", "snapshot", "cam"):
