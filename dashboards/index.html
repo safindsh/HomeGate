@@ -422,7 +422,7 @@ async function loadStates() {
       : smokeState === 'unavailable'
         ? 'Проверьте питание и связь датчика'
         : 'Система безопасности в норме');
-    const gate1 = s['cover.smart_garage_door_opener_door_1'] || 'unavailable';
+    const gate1 = s['cover.wifi_garage_door_module_door_1'] || 'unavailable';
     setEl('s-gate', gate1 === 'open' || gate1 === 'opening'
       ? '<span class="yellow">Открыты</span>'
       : gate1 === 'unavailable'
