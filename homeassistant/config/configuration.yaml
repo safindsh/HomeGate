@@ -12,6 +12,10 @@ scene: !include scenes.yaml
 
 # Доступ через nginx-прокси (https://<host>:8443/ — HA не умеет работать в подкаталоге)
 http:
+  # Защита от перебора пароля: HA открыт снаружи на 8443,
+  # после пяти неудачных попыток адрес блокируется (ip_bans.yaml).
+  ip_ban_enabled: true
+  login_attempts_threshold: 5
   use_x_forwarded_for: true
   trusted_proxies:
     - 127.0.0.1
