@@ -24,10 +24,40 @@
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
   .update-time { font-size: 11px; color: var(--muted); }
 
-  main { padding: 24px; max-width: 1400px; margin: 0 auto; }
+  main { padding: 20px 24px 28px; max-width: 1400px; margin: 0 auto; }
+
+  /* ПЕРВЫЙ ЭКРАН */
+  .priority-grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(300px, 1fr); gap: 16px; align-items: stretch; margin-bottom: 24px; }
+  .camera-card { min-width: 0; }
+  .priority-stack { display: grid; grid-template-rows: repeat(3, minmax(0, 1fr)); gap: 12px; }
+  .priority-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 17px 18px; box-shadow: var(--shadow); display: flex; flex-direction: column; justify-content: center; min-height: 0; }
+  .priority-card.alert { border-color: rgba(248,81,73,.7); background: rgba(248,81,73,.08); }
+  .priority-head { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .7px; margin-bottom: 9px; }
+  .priority-head .icon { font-size: 18px; }
+  .priority-main { font-size: 23px; line-height: 1.1; font-weight: 750; }
+  .priority-sub { color: var(--muted); font-size: 12px; margin-top: 6px; }
+  .gate-list { display: grid; gap: 7px; }
+  .gate-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 7px; border-top: 1px solid var(--border); }
+  .gate-row:first-child { padding-top: 0; border-top: 0; }
+  .gate-name { color: var(--muted); font-size: 12px; }
+  .weather-line { display: flex; align-items: center; gap: 12px; }
+  .weather-icon { font-size: 34px; line-height: 1; }
+  .weather-temp { font-size: 27px; line-height: 1; font-weight: 750; }
+  .weather-detail { color: var(--muted); font-size: 12px; margin-top: 4px; }
+  .section-title { display: flex; align-items: center; gap: 10px; margin: 28px 2px 14px; color: var(--muted); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .8px; }
+  .section-title::after { content: ""; height: 1px; background: var(--border); flex: 1; }
+  @media(max-width:900px) {
+    .priority-grid { grid-template-columns: 1fr; }
+    .priority-stack { grid-template-columns: repeat(3, 1fr); grid-template-rows: none; }
+  }
+  @media(max-width:700px) {
+    main { padding: 14px; }
+    .priority-stack { grid-template-columns: 1fr; }
+    .priority-main { font-size: 20px; }
+  }
 
   /* СТАТУСНАЯ СТРОКА */
-  .status-bar { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 24px; }
+  .status-bar { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 16px; }
   .status-pill { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; display: flex; align-items: center; gap: 10px; transition: border-color 0.2s; }
   .status-pill:hover { border-color: var(--accent); }
   .pill-icon { font-size: 22px; }
@@ -55,13 +85,13 @@
   .cameras { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
   @media(max-width:700px) { .cameras { grid-template-columns: 1fr 1fr; } }
   .cam-tile { background: var(--bg3); border-radius: 8px; aspect-ratio: 16/9; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; border: 1px solid var(--border); position: relative; overflow: hidden; cursor: pointer; transition: border-color 0.2s; }
-  .cam-tile:hover { border-color: var(--accent); }
+  .cam-tile:hover { border-color: var(--accent); transform: translateY(-1px); }
   .cam-tile img { width: 100%; height: 100%; object-fit: cover; border-radius: 8px; }
   .cam-tile .cam-label { position: absolute; bottom: 6px; left: 8px; font-size: 11px; color: var(--text); background: rgba(0,0,0,0.6); padding: 2px 7px; border-radius: 4px; }
   .cam-tile .cam-placeholder { text-align: center; }
   .cam-tile .cam-placeholder .icon { font-size: 28px; opacity: 0.4; }
   .cam-tile .cam-placeholder p { font-size: 11px; color: var(--muted); margin-top: 4px; }
-  .cam-live { position: absolute; top: 6px; right: 8px; background: var(--warn); color: #fff; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 3px; letter-spacing: 0.5px; }
+  .cam-live { position: absolute; top: 6px; right: 8px; background: rgba(248,81,73,.9); color: #fff; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 3px; letter-spacing: 0.5px; }
 
   /* ЖИВАЯ ТРАНСЛЯЦИЯ КАМЕР */
   body.camera-viewer-open { overflow: hidden; }
@@ -137,20 +167,9 @@
 </header>
 
 <main>
-  <!-- СТАТУС-СТРОКА -->
-  <div class="status-bar" id="status-bar">
-    <div class="status-pill"><div class="pill-icon">🔥</div><div><div class="pill-label">Дым</div><div class="pill-value" id="s-smoke">—</div></div></div>
-    <div class="status-pill"><div class="pill-icon">🚗</div><div><div class="pill-label">Ворота</div><div class="pill-value" id="s-gate">—</div></div></div>
-    <div class="status-pill"><div class="pill-icon">⚡</div><div><div class="pill-label">Мощность</div><div class="pill-value blue" id="s-power">—</div></div></div>
-    <div class="status-pill"><div class="pill-icon">🔋</div><div><div class="pill-label">Дым батарея</div><div class="pill-value" id="s-battery">—</div></div></div>
-    <div class="status-pill"><div class="pill-icon">🌡️</div><div><div class="pill-label">Температура</div><div class="pill-value" id="s-temp">—</div></div></div>
-    <div class="status-pill"><div class="pill-icon">💧</div><div><div class="pill-label">Влажность</div><div class="pill-value" id="s-hum">—</div></div></div>
-  </div>
-
-  <div class="grid">
-
-    <!-- КАМЕРЫ -->
-    <div class="card col-8">
+  <section class="priority-grid" aria-label="Главное">
+    <!-- КАМЕРЫ: главный визуальный блок -->
+    <div class="card camera-card">
       <div class="card-title"><span>📷</span> Камеры Tapo</div>
       <div class="cameras" id="cameras-grid">
         <div class="cam-tile" data-cam="1">
@@ -181,18 +200,53 @@
       </div>
     </div>
 
-    <!-- БЕЗОПАСНОСТЬ + СВЕТ -->
-    <div class="card col-4">
-      <div class="card-title"><span>🔐</span> Безопасность</div>
-      <div class="switches" id="security-list">
-        <div class="switch-row"><span class="switch-name">🔥 Датчик дыма</span><span class="badge" id="sw-smoke">—</span></div>
-        <div class="switch-row"><span class="switch-name">🚗 Ворота 1</span><span class="badge" id="sw-gate1">—</span></div>
-        <div class="switch-row"><span class="switch-name">🚗 Ворота 2</span><span class="badge" id="sw-gate2">—</span></div>
+    <aside class="priority-stack">
+      <div class="priority-card" id="critical-smoke-card">
+        <div class="priority-head"><span class="icon">🔥</span> Датчик дыма</div>
+        <div class="priority-main" id="s-smoke">Проверяю…</div>
+        <div class="priority-sub" id="smoke-detail">Состояние системы безопасности</div>
+      </div>
+
+      <div class="priority-card">
+        <div class="priority-head"><span class="icon">🚗</span> Ворота</div>
+        <div class="priority-main" id="s-gate">Проверяю…</div>
+        <div class="gate-list">
+          <div class="gate-row"><span class="gate-name">Ворота 1</span><span id="sw-gate1">—</span></div>
+          <div class="gate-row"><span class="gate-name">Ворота 2</span><span id="sw-gate2">—</span></div>
+        </div>
+      </div>
+
+      <div class="priority-card">
+        <div class="priority-head"><span class="icon">🌤️</span> Сегодня в Самаре</div>
+        <div class="weather-line">
+          <div class="weather-icon" id="weather-icon">·</div>
+          <div>
+            <div class="weather-temp" id="weather-temp">—</div>
+            <div class="weather-detail" id="weather-summary">Загружаю прогноз…</div>
+          </div>
+        </div>
+        <div class="priority-sub" id="weather-extra">—</div>
+      </div>
+    </aside>
+  </section>
+
+  <div class="section-title">Дом в деталях</div>
+
+  <!-- ВТОРИЧНЫЕ ПОКАЗАТЕЛИ -->
+  <div class="status-bar" id="status-bar">
+    <div class="status-pill"><div class="pill-icon">⚡</div><div><div class="pill-label">Мощность</div><div class="pill-value blue" id="s-power">—</div></div></div>
+    <div class="status-pill"><div class="pill-icon">🔋</div><div><div class="pill-label">Дым батарея</div><div class="pill-value" id="s-battery">—</div></div></div>
+    <div class="status-pill"><div class="pill-icon">🌡️</div><div><div class="pill-label">Температура</div><div class="pill-value" id="s-temp">—</div></div></div>
+    <div class="status-pill"><div class="pill-icon">💧</div><div><div class="pill-label">Влажность</div><div class="pill-value" id="s-hum">—</div></div></div>
+  </div>
+
+  <div class="grid">
+    <!-- БЫТОВЫЕ СОСТОЯНИЯ + СВЕТ -->
+    <div class="card col-6">
+      <div class="card-title"><span>🏠</span> Бытовые состояния</div>
+      <div class="switches">
         <div class="switch-row"><span class="switch-name">🐾 Кормушка заряд</span><span class="badge" id="sw-feeder">—</span></div>
         <div class="switch-row"><span class="switch-name">🐾 Кормление</span><span class="badge" id="sw-feeding">—</span></div>
-      </div>
-      <div class="card-title" style="margin-top:20px"><span>💡</span> Свет</div>
-      <div class="switches" id="lights-list">
         <div class="switch-row"><span class="switch-name">Свет у Яна</span><span class="badge" id="sw-light1">—</span></div>
         <div class="switch-row"><span class="switch-name">Лампочка 1</span><span class="badge" id="sw-lamp1">—</span></div>
         <div class="switch-row"><span class="switch-name">Лампочка 2</span><span class="badge" id="sw-lamp2">—</span></div>
@@ -303,6 +357,50 @@ function badge(state, on_label, off_label) {
 
 function setEl(id, html) { const e=document.getElementById(id); if(e) e.innerHTML=html; }
 
+function weatherCode(code) {
+  const values = {
+    0:['☀️','ясно'], 1:['🌤️','малооблачно'], 2:['⛅','облачно'], 3:['☁️','пасмурно'],
+    45:['🌫️','туман'], 48:['🌫️','изморозь'], 51:['🌦️','морось'],
+    53:['🌦️','морось'], 55:['🌦️','морось'], 61:['🌧️','дождь'],
+    63:['🌧️','дождь'], 65:['🌧️','сильный дождь'], 66:['🌧️','ледяной дождь'],
+    67:['🌧️','ледяной дождь'], 71:['❄️','снег'], 73:['❄️','снег'],
+    75:['❄️','сильный снег'], 77:['🌨️','снежная крупа'], 80:['🌦️','ливень'],
+    81:['🌦️','ливень'], 82:['⛈️','сильный ливень'], 85:['🌨️','снегопад'],
+    86:['🌨️','снегопад'], 95:['⛈️','гроза'], 96:['⛈️','гроза с градом'],
+    99:['⛈️','гроза с градом']
+  };
+  return values[code] || ['·','нет данных'];
+}
+
+async function loadWeather() {
+  try {
+    const url = 'https://api.open-meteo.com/v1/forecast'
+      + '?latitude=53.195&longitude=50.101'
+      + '&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m'
+      + '&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max'
+      + '&timezone=Europe%2FSamara&forecast_days=1';
+    const response = await fetch(url, {cache: 'no-store'});
+    if (!response.ok) throw new Error(`Open-Meteo: HTTP ${response.status}`);
+    const weather = await response.json();
+    const current = weather.current;
+    const daily = weather.daily;
+    const condition = weatherCode(current.weather_code);
+    setEl('weather-icon', condition[0]);
+    setEl('weather-temp', `${Math.round(current.temperature_2m)}°`);
+    setEl('weather-summary',
+      `${condition[1]} · ощущается ${Math.round(current.apparent_temperature)}°`);
+    setEl('weather-extra',
+      `днём ${Math.round(daily.temperature_2m_max[0])}° · ночью `
+      + `${Math.round(daily.temperature_2m_min[0])}° · осадки `
+      + `${daily.precipitation_probability_max[0]}% · ветер `
+      + `${Math.round(current.wind_speed_10m)} км/ч`);
+  } catch (error) {
+    console.error('Weather fetch error:', error);
+    setEl('weather-summary', 'Прогноз временно недоступен');
+    setEl('weather-extra', 'Open-Meteo не ответил');
+  }
+}
+
 async function loadStates() {
   try {
     const r = await fetch(HA_STATES, {cache: 'no-store'});
@@ -313,12 +411,27 @@ async function loadStates() {
 
     // статус-строка
     const smokeState = s['binary_sensor.smoke_alarm_smoke'];
+    const smokeCard = document.getElementById('critical-smoke-card');
+    smokeCard?.classList.toggle('alert', smokeState === 'on');
     setEl('s-smoke', smokeState === 'on'
       ? '<span class="warn">⚠ ДЫМИТ!</span>'
-      : '<span class="ok">Норма</span>');
-    setEl('s-gate', s['cover.wifi_garage_door_module_door_1'] === 'closed'
-      ? '<span class="ok">Закрыты</span>'
-      : '<span class="yellow">Открыты</span>');
+      : smokeState === 'unavailable'
+        ? '<span class="warn">Нет связи</span>'
+        : '<span class="ok">Дыма нет</span>');
+    setEl('smoke-detail', smokeState === 'on'
+      ? 'Требуется немедленная проверка'
+      : smokeState === 'unavailable'
+        ? 'Проверьте питание и связь датчика'
+        : 'Система безопасности в норме');
+    const gate1 = s['cover.smart_garage_door_opener_door_1'] || 'unavailable';
+    const gate2 = s['cover.wifi_garage_door_module_door_1'] || 'unavailable';
+    const gatesUnavailable = [gate1, gate2].filter(x => x === 'unavailable').length;
+    const gatesOpen = [gate1, gate2].filter(x => x === 'open' || x === 'opening').length;
+    setEl('s-gate', gatesOpen
+      ? `<span class="yellow">${gatesOpen === 2 ? 'Оба открыты' : 'Одни открыты'}</span>`
+      : gatesUnavailable
+        ? '<span class="warn">Не всё на связи</span>'
+        : '<span class="ok">Оба закрыты</span>');
     const totalPower = ['sensor.exclusive_shkaf_power','sensor.wifi_rozetka_power',
       'sensor.maskitol_v_komnate_gleba_power','sensor.maskitol_v_komnate_iana_power',
       'sensor.moskitol_spalnia_power']
@@ -333,8 +446,8 @@ async function loadStates() {
 
     // безопасность
     setEl('sw-smoke', badge(smokeState, '⚠ Дымит!', '✓ Норма'));
-    setEl('sw-gate1', badge(s['cover.smart_garage_door_opener_door_1']||'unavailable', 'Открыты', 'Закрыты'));
-    setEl('sw-gate2', badge(s['cover.wifi_garage_door_module_door_1'], 'Открыты', 'Закрыты'));
+    setEl('sw-gate1', badge(gate1, 'Открыты', 'Закрыты'));
+    setEl('sw-gate2', badge(gate2, 'Открыты', 'Закрыты'));
     setEl('sw-feeder', badge(s['binary_sensor.pet_feeder_charging'], 'Заряжается', 'Готова'));
     setEl('sw-feeding', badge(s['binary_sensor.pet_feeder_feeding'], 'Кормит', 'Ожидание'));
 
@@ -383,6 +496,8 @@ async function loadStates() {
 
 loadStates();
 setInterval(loadStates, 30000);
+loadWeather();
+setInterval(loadWeather, 1800000);
 
 function refreshCams() {
   document.querySelectorAll('.cam-tile img').forEach(img => {
