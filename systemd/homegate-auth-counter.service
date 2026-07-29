@@ -1,0 +1,9 @@
+[Unit]
+Description=Update HomeGate failed authorization counter
+After=nginx.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /opt/homegate/scripts/update_auth_stats.py
+User=root
+Group=root

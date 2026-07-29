@@ -119,6 +119,20 @@
       gap: 14px;
     }
 
+    .counter {
+      display: flex;
+      gap: 22px;
+      margin: -8px 0 28px;
+      padding: 15px 18px;
+      border: 1px solid var(--border);
+      border-radius: 13px;
+      background: rgba(0, 0, 0, .14);
+    }
+
+    .counter-item { display: grid; gap: 2px; }
+    .counter-value { color: var(--warm); font-size: 21px; font-weight: 750; }
+    .counter-label { color: var(--muted); font-size: 11px; text-transform: uppercase; }
+
     .retry {
       display: inline-flex;
       min-height: 46px;
@@ -144,6 +158,7 @@
       .actions { align-items: stretch; flex-direction: column; }
       .retry { width: 100%; }
       .note { text-align: center; }
+      .counter { justify-content: space-between; }
     }
   </style>
 </head>
@@ -173,10 +188,33 @@
       </article>
     </section>
 
+    <aside class="counter" aria-label="Счётчик попыток входа">
+      <span class="counter-item">
+        <strong class="counter-value" id="attempts-today">—</strong>
+        <span class="counter-label">сегодня</span>
+      </span>
+      <span class="counter-item">
+        <strong class="counter-value" id="attempts-total">—</strong>
+        <span class="counter-label">всего постучались</span>
+      </span>
+    </aside>
+
     <div class="actions">
       <a class="retry" href="/">Постучаться ещё раз</a>
       <span class="note">Пароль не подошёл? Проверь раскладку и попробуй снова.</span>
     </div>
   </main>
+  <script>
+    fetch("/auth-stats.json", { cache: "no-store" })
+      .then(function (response) { return response.ok ? response.json() : null; })
+      .then(function (stats) {
+        if (!stats) return;
+        document.getElementById("attempts-today").textContent =
+          Number(stats.today || 0).toLocaleString("ru-RU");
+        document.getElementById("attempts-total").textContent =
+          Number(stats.total || 0).toLocaleString("ru-RU");
+      })
+      .catch(function () {});
+  </script>
 </body>
 </html>
