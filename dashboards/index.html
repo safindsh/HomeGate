@@ -63,6 +63,24 @@
   .cam-tile .cam-placeholder p { font-size: 11px; color: var(--muted); margin-top: 4px; }
   .cam-live { position: absolute; top: 6px; right: 8px; background: var(--warn); color: #fff; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 3px; letter-spacing: 0.5px; }
 
+  /* ПРОСМОТР КАМЕР */
+  body.camera-viewer-open { overflow: hidden; }
+  .camera-viewer { position: fixed; inset: 0; z-index: 1000; display: none; flex-direction: column; background: rgba(3,7,12,0.96); }
+  .camera-viewer.open { display: flex; }
+  .camera-viewer-bar { min-height: 58px; padding: 8px 12px 8px 18px; display: flex; align-items: center; gap: 12px; background: rgba(13,17,23,0.94); border-bottom: 1px solid var(--border); }
+  .camera-viewer-title { min-width: 0; flex: 1; font-size: 14px; font-weight: 600; }
+  .camera-viewer-hint { color: var(--muted); font-size: 11px; font-weight: 400; margin-left: 10px; }
+  .camera-viewer-btn { min-width: 44px; min-height: 40px; padding: 0 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg3); color: var(--text); font-size: 18px; cursor: pointer; }
+  .camera-viewer-btn:hover { color: var(--accent); border-color: var(--accent); }
+  .camera-viewer-stage { min-height: 0; flex: 1; display: flex; align-items: center; justify-content: center; overflow: hidden; touch-action: none; cursor: grab; }
+  .camera-viewer-stage.dragging { cursor: grabbing; }
+  .camera-viewer-image { max-width: 94vw; max-height: calc(100vh - 78px); object-fit: contain; user-select: none; -webkit-user-drag: none; will-change: transform; transform-origin: center center; }
+  @media(max-width:700px) {
+    .camera-viewer-hint { display: none; }
+    .camera-viewer-bar { min-height: 54px; padding-left: 12px; }
+    .camera-viewer-image { max-width: 100vw; max-height: calc(100vh - 54px); }
+  }
+
   /* СЕНСОРЫ */
   .sensors { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   .sensor-row { background: var(--bg3); border-radius: 8px; padding: 12px 14px; display: flex; justify-content: space-between; align-items: center; }
@@ -259,6 +277,20 @@
 
 <footer>HomeGate · Самара · <span id="footer-time"></span> · Обновление раз в 30 сек</footer>
 
+<div class="camera-viewer" id="camera-viewer" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="camera-viewer-title">
+  <div class="camera-viewer-bar">
+    <div class="camera-viewer-title" id="camera-viewer-title">
+      Камера
+      <span class="camera-viewer-hint">Колесо или pinch — масштаб · тянуть — перемещение · двойной клик — сброс</span>
+    </div>
+    <button class="camera-viewer-btn" id="camera-viewer-reset" type="button" aria-label="Сбросить масштаб">1:1</button>
+    <button class="camera-viewer-btn" id="camera-viewer-close" type="button" aria-label="Закрыть просмотр">×</button>
+  </div>
+  <div class="camera-viewer-stage" id="camera-viewer-stage">
+    <img class="camera-viewer-image" id="camera-viewer-image" alt="">
+  </div>
+</div>
+
 <script>
 const HA_STATES = '/api/home-states';
 
@@ -360,6 +392,156 @@ function refreshCams() {
   });
 }
 setInterval(refreshCams, 30000);
+
+const cameraViewer = document.getElementById('camera-viewer');
+const cameraViewerStage = document.getElementById('camera-viewer-stage');
+const cameraViewerImage = document.getElementById('camera-viewer-image');
+const cameraViewerTitle = document.getElementById('camera-viewer-title');
+const cameraViewerClose = document.getElementById('camera-viewer-close');
+const cameraViewerReset = document.getElementById('camera-viewer-reset');
+const viewerPointers = new Map();
+let viewerScale = 1;
+let viewerX = 0;
+let viewerY = 0;
+let viewerLastPoint = null;
+let viewerPinchDistance = 0;
+let viewerPinchScale = 1;
+let viewerDragged = false;
+let viewerPreviousFocus = null;
+
+function clampViewerScale(value) {
+  return Math.min(5, Math.max(1, value));
+}
+
+function applyViewerTransform() {
+  if (viewerScale === 1) {
+    viewerX = 0;
+    viewerY = 0;
+  }
+  cameraViewerImage.style.transform =
+    `translate3d(${viewerX}px, ${viewerY}px, 0) scale(${viewerScale})`;
+  cameraViewerReset.textContent = `${viewerScale.toFixed(1)}×`;
+}
+
+function resetCameraViewer() {
+  viewerScale = 1;
+  viewerX = 0;
+  viewerY = 0;
+  applyViewerTransform();
+}
+
+function openCameraViewer(tile) {
+  const source = tile.querySelector('img');
+  const label = tile.querySelector('.cam-label')?.textContent || source.alt || 'Камера';
+  viewerPreviousFocus = document.activeElement;
+  cameraViewerImage.src = source.currentSrc || source.src;
+  cameraViewerImage.alt = label;
+  cameraViewerTitle.childNodes[0].textContent = label + ' ';
+  resetCameraViewer();
+  cameraViewer.classList.add('open');
+  cameraViewer.setAttribute('aria-hidden', 'false');
+  document.body.classList.add('camera-viewer-open');
+  cameraViewerClose.focus();
+}
+
+function closeCameraViewer() {
+  cameraViewer.classList.remove('open');
+  cameraViewer.setAttribute('aria-hidden', 'true');
+  document.body.classList.remove('camera-viewer-open');
+  viewerPointers.clear();
+  cameraViewerImage.removeAttribute('src');
+  if (viewerPreviousFocus?.focus) viewerPreviousFocus.focus();
+}
+
+document.querySelectorAll('.cam-tile').forEach(tile => {
+  const label = tile.querySelector('.cam-label')?.textContent || 'камеру';
+  tile.setAttribute('role', 'button');
+  tile.setAttribute('tabindex', '0');
+  tile.setAttribute('aria-label', `Открыть ${label}`);
+  tile.addEventListener('click', () => openCameraViewer(tile));
+  tile.addEventListener('keydown', event => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      openCameraViewer(tile);
+    }
+  });
+});
+
+cameraViewerClose.addEventListener('click', closeCameraViewer);
+cameraViewerReset.addEventListener('click', resetCameraViewer);
+cameraViewerStage.addEventListener('wheel', event => {
+  event.preventDefault();
+  viewerScale = clampViewerScale(viewerScale * (event.deltaY < 0 ? 1.15 : 0.87));
+  applyViewerTransform();
+}, {passive: false});
+cameraViewerStage.addEventListener('dblclick', event => {
+  event.preventDefault();
+  if (viewerScale > 1) {
+    resetCameraViewer();
+  } else {
+    viewerScale = 2.5;
+    applyViewerTransform();
+  }
+});
+cameraViewerStage.addEventListener('pointerdown', event => {
+  cameraViewerStage.setPointerCapture(event.pointerId);
+  viewerPointers.set(event.pointerId, {x: event.clientX, y: event.clientY});
+  viewerDragged = false;
+  if (viewerPointers.size === 1) {
+    viewerLastPoint = {x: event.clientX, y: event.clientY};
+  } else if (viewerPointers.size === 2) {
+    const points = [...viewerPointers.values()];
+    viewerPinchDistance = Math.hypot(
+      points[0].x - points[1].x,
+      points[0].y - points[1].y
+    );
+    viewerPinchScale = viewerScale;
+  }
+  cameraViewerStage.classList.add('dragging');
+});
+cameraViewerStage.addEventListener('pointermove', event => {
+  if (!viewerPointers.has(event.pointerId)) return;
+  viewerPointers.set(event.pointerId, {x: event.clientX, y: event.clientY});
+  if (viewerPointers.size === 2) {
+    const points = [...viewerPointers.values()];
+    const distance = Math.hypot(
+      points[0].x - points[1].x,
+      points[0].y - points[1].y
+    );
+    if (Math.abs(distance - viewerPinchDistance) > 2) viewerDragged = true;
+    viewerScale = clampViewerScale(
+      viewerPinchScale * distance / Math.max(viewerPinchDistance, 1)
+    );
+    applyViewerTransform();
+  } else if (viewerPointers.size === 1 && viewerLastPoint && viewerScale > 1) {
+    const dx = event.clientX - viewerLastPoint.x;
+    const dy = event.clientY - viewerLastPoint.y;
+    if (Math.abs(dx) + Math.abs(dy) > 2) viewerDragged = true;
+    viewerX += dx;
+    viewerY += dy;
+    viewerLastPoint = {x: event.clientX, y: event.clientY};
+    applyViewerTransform();
+  }
+});
+function releaseViewerPointer(event) {
+  viewerPointers.delete(event.pointerId);
+  if (viewerPointers.size === 1) {
+    viewerLastPoint = [...viewerPointers.values()][0];
+  } else if (viewerPointers.size === 0) {
+    viewerLastPoint = null;
+    cameraViewerStage.classList.remove('dragging');
+  }
+}
+cameraViewerStage.addEventListener('pointerup', releaseViewerPointer);
+cameraViewerStage.addEventListener('pointercancel', releaseViewerPointer);
+cameraViewerStage.addEventListener('click', event => {
+  if (event.target === cameraViewerStage && !viewerDragged) closeCameraViewer();
+});
+document.addEventListener('keydown', event => {
+  if (event.key === 'Escape' && cameraViewer.classList.contains('open')) {
+    closeCameraViewer();
+  }
+});
 
 </script>
 </body>
