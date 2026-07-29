@@ -1,10 +1,26 @@
 # HomeGate
 
-Конфигурация домашнего сервера: Home Assistant, MCP-гейт для Claude,
-векторная память, мониторинг с алертами в Telegram, реверс-прокси.
+Конфигурация домашнего сервера: Home Assistant, два MCP-интерфейса,
+векторная память, Telegram-бот, пять RTSP-камер, мониторинг с алертами
+и реверс-прокси.
 
 Сервер стоит в частном доме и обслуживает домашнюю автоматику.
 Хозяин дома пользуется им через своего Claude, администратор — по SSH.
+
+## Текущее состояние — 29 июля 2026
+
+- `safindsh.keenetic.link` работает с доверенным TLS-сертификатом.
+- Главная страница закрыта Basic Auth; пароль доступен владельцу через
+  Telegram-команды `/пароль` и `/пароль новый`.
+- Оба MCP-интерфейса работают без Basic Auth: `/claude-mcp` использует
+  токенные роли, а доверенный `/homegate-mcp` с фиксированной admin-ролью
+  закрыт отдельным allow-списком nginx.
+- Подключены все пять найденных Tapo-камер; стоп-кадры обновляются раз
+  в 30 секунд и доступны на главной и через Telegram-бота.
+- Нативные сервисы nginx, homegate, homegate-mcp, homegate-bot,
+  homegate-snapshots, node_exporter и Docker активны.
+- Контейнеры Home Assistant, Qdrant и полного мониторингового стека
+  запущены; Qdrant хранит домашнюю память в коллекции `dima_memory`.
 
 ---
 
@@ -13,14 +29,16 @@
 ```
 homeassistant/           Home Assistant (compose + configuration.yaml)
 homegate/app/            MCP-гейт: FastAPI, типизированные инструменты
-homegate/config/         config.example.json — шаблон (реальный конфиг не в git)
+homegate/bot/            Telegram-бот и снятие стоп-кадров с камер
+homegate/config/         шаблоны конфигов (реальные конфиги не в git)
 qdrant/                  векторная память (compose)
 monitoring/              Prometheus, Grafana, Loki, Promtail, Alertmanager
 dashboards/index.html    стартовая страница с состоянием дома
 nginx/homegate.conf      реверс-прокси, TLS, ограничения доступа
 nginx/ha.conf            Home Assistant на отдельном порту 8443
-systemd/                 юниты homegate и node_exporter
+systemd/                 юниты MCP, бота, снимков, nginx и node_exporter
 docs/README.server.md    эксплуатационная документация машины
+docs/network-report.md   инвентаризация домашней сети
 ```
 
 ## Сервисы
@@ -29,7 +47,10 @@ docs/README.server.md    эксплуатационная документаци
 |---|---|---|---|
 | nginx | нативно | 80, 443, 8443 | systemd |
 | node_exporter | нативно | 172.17.0.1:9100 | systemd |
-| homegate (MCP) | нативно, venv | 127.0.0.1:8800 | systemd |
+| homegate | нативно, venv | 127.0.0.1:8800 | systemd |
+| homegate-mcp (FastMCP) | нативно, venv | 127.0.0.1:8801 | systemd |
+| homegate-bot | нативно, venv | long polling | systemd |
+| homegate-snapshots | нативно, venv | каждые 30 секунд | systemd timer |
 | Home Assistant | Docker | 8123 (host network) | compose |
 | Qdrant | Docker | 127.0.0.1:6333 | compose |
 | Prometheus | Docker | 127.0.0.1:9090 | compose |
@@ -38,8 +59,9 @@ docs/README.server.md    эксплуатационная документаци
 | Promtail | Docker | — | compose |
 | Alertmanager | Docker | 127.0.0.1:9093 | compose |
 
-Наружу открыты только 22, 80, 443, 8443. Остальное на localhost,
-доступ через nginx. Qdrant намеренно не проксируется.
+Публичные веб-входы — 80, 443 и 8443. SSH проброшен роутером на внешний
+порт 60022. Остальное слушает localhost и доступно только через nginx.
+Qdrant намеренно не проксируется.
 
 ### Точки входа
 
@@ -47,7 +69,8 @@ docs/README.server.md    эксплуатационная документаци
 |---|---|
 | `https://<host>/` | стартовая страница: состояние дома, графики |
 | `https://<host>/grafana/` | Grafana |
-| `https://<host>/claude-mcp` | MCP-гейт |
+| `https://<host>/claude-mcp` | основной типизированный MCP-гейт |
+| `https://<host>/homegate-mcp` | FastMCP-коннектор для внешних агентов |
 | `https://<host>:8443/` | Home Assistant |
 
 **Home Assistant не умеет работать в подкаталоге** — у него нет аналога
@@ -69,9 +92,16 @@ allow 192.168.0.0/16;    # домашняя сеть
 deny all;
 ```
 
-Смысл списка — дать агентам Claude доступ к гейту. Токен при этом
-остаётся обязательным, это второй рубеж. Закрывать гейт только домашней
-сетью нельзя: агенты приходят снаружи и получат отказ.
+Смысл списка — дать агентам доступ к гейту и не открывать управление
+домом всему интернету. Основной `/claude-mcp` дополнительно разделяет
+роли по токенам. FastMCP-коннектор `/homegate-mcp` работает как
+доверенный admin-канал и поэтому ограничивается отдельным allow-списком
+nginx.
+
+Basic Auth относится **только к главной странице** и её статическим
+файлам. MCP, Grafana и служебные API его не наследуют: у каждого из них
+свои ограничения доступа. Не переносить `auth_basic` обратно на уровень
+всего HTTPS-сервера — это заблокирует MCP-коннектор ответом `401`.
 
 Служебные эндпоинты `/api/home-states` и `/api/home-history/` ограничены
 домашней сетью — они нужны браузеру, агентам туда не надо.
@@ -107,12 +137,16 @@ deny all;
 
 ### Инструменты
 
-Роль `user` — 7 штук:
+Роль `user` — 9 инструментов:
 `memory_save`, `memory_search`, `memory_list`, `home_state`,
 `sensor_history`, `home_anomalies`, `device_control`,
 `chat_save`, `chat_search`
 
 Роль `admin` — те же плюс `run_command`, `service_status`.
+
+`/homegate-mcp` — тонкая FastMCP-обёртка над той же логикой. Она
+публикует инструменты внешнему агенту от фиксированной admin-личности;
+доступ к ней должен оставаться строго ограниченным в nginx.
 
 `home_anomalies` — не «покажи датчики», а «что выглядит не так»:
 молчащие больше суток сенсоры, севшие батареи, недоступные устройства.
@@ -140,9 +174,9 @@ Qdrant плюс модель `intfloat/multilingual-e5-small` (384 измере�
 (`only_chats=true`) или вместе с фактами о доме. Метка нужна, чтобы
 разговоры не размывали выдачу по эксплуатационным вопросам.
 
-Модель эмбеддингов тянется с HuggingFace при первом обращении. Если
-интернет недоступен, `chat_save` упадёт — стоит закэшировать модель
-локально (`HF_HOME` в окружении сервиса).
+На текущем сервере модель уже закэширована в `/opt/homegate/models`.
+При чистом развёртывании она тянется с HuggingFace при первом обращении;
+без интернета первая запись в память не заработает.
 
 ---
 
@@ -161,10 +195,12 @@ systemctl enable --now docker
 
 ```bash
 cp homegate/config/config.example.json /opt/homegate/config/config.json
+cp homegate/config/bot.json.example /opt/homegate/config/bot.json
 cp monitoring/.env.example /opt/monitoring/.env
 cp qdrant/.env.example /opt/qdrant/.env
 cp monitoring/alertmanager/alertmanager.example.yml /opt/monitoring/alertmanager/alertmanager.yml
-chmod 600 /opt/homegate/config/config.json /opt/monitoring/.env /opt/qdrant/.env
+chmod 600 /opt/homegate/config/config.json /opt/homegate/config/bot.json
+chmod 600 /opt/monitoring/.env /opt/qdrant/.env
 ```
 
 Токены генерировать на месте: `openssl rand -hex 32`.
@@ -173,14 +209,15 @@ chmod 600 /opt/homegate/config/config.json /opt/monitoring/.env /opt/qdrant/.env
 ### 3. Сертификат
 
 ```bash
-mkdir -p /etc/nginx/ssl
-openssl req -x509 -nodes -newkey rsa:2048 -days 3650 \
-  -keyout /etc/nginx/ssl/selfsigned.key -out /etc/nginx/ssl/selfsigned.crt \
-  -subj "/CN=homegate.local"
-chmod 600 /etc/nginx/ssl/selfsigned.key
+dnf install -y certbot python3-certbot-nginx
+mkdir -p /var/www/letsencrypt
+semanage fcontext -a -t httpd_sys_content_t "/var/www/letsencrypt(/.*)?"
+restorecon -Rv /var/www/letsencrypt
+certbot --nginx -d safindsh.keenetic.link
 ```
 
-При появлении домена: `certbot --nginx -d <домен>`.
+В боевой конфигурации используется доверенный сертификат Let's Encrypt
+для `safindsh.keenetic.link`.
 
 ### 4. Сервисы
 
@@ -189,6 +226,8 @@ cd /opt/qdrant && docker compose up -d
 cd /opt/monitoring && docker compose up -d
 cd /opt/homeassistant && docker compose up -d
 systemctl enable --now node_exporter homegate nginx
+systemctl enable --now homegate-mcp homegate-bot
+systemctl enable --now homegate-snapshots.timer
 ```
 
 ### 5. Home Assistant
@@ -378,6 +417,10 @@ Prometheus — помогает `curl -X POST http://127.0.0.1:9090/-/reload`.
 за сутки — напряжение в сети и потребление розеток. Обновляется раз в
 30 секунд, графики раз в 5 минут.
 
+Текущий логин и пароль можно получить только из разрешённого чата
+Telegram-бота командой `/пароль`; `/пароль новый` генерирует новый пароль,
+переписывает htpasswd и делает старый пароль недействительным.
+
 **Токен HA в браузер не попадает.** Страница ходит на свой же сервер
 (`/api/home-states` и `/api/home-history/`), nginx подставляет заголовок
 из `/etc/nginx/secrets/ha_auth.conf` и проксирует в HA. Эндпоинты только
@@ -399,9 +442,22 @@ Prometheus — помогает `curl -X POST http://127.0.0.1:9090/-/reload`.
 
 ## Камеры
 
-Tapo C200, шесть штук, подключение по RTSP. Порт 554 у камеры закрыт
-до тех пор, пока в приложении не создан **Camera Account** — отдельная
-локальная учётка, не связанная с аккаунтом Tapo:
+В сети найдены и подключены пять камер Tapo по RTSP:
+
+| № | IP | Состояние |
+|---|---|---|
+| 1 | `192.168.69.140` | подключена |
+| 2 | `192.168.69.70` | подключена |
+| 3 | `192.168.69.121` | подключена |
+| 4 | `192.168.69.59` | подключена |
+| 5 | `192.168.69.61` | подключена |
+
+Шестая камера в сети не обнаружена. Для всех пяти найденных камер
+Camera Account уже создан, RTSP работает, а стоп-кадры обновляются.
+
+Порт 554 у Tapo закрыт до тех пор, пока в приложении не создан
+**Camera Account** — отдельная локальная учётка, не связанная с
+облачным аккаунтом Tapo:
 
 > камера → шестерёнка → **Расширенные настройки** → **Учётная запись
 > камеры** → «Понял и согласен использовать» → логин и пароль (6–32
@@ -425,7 +481,8 @@ Tapo C200, шесть штук, подключение по RTSP. Порт 554 �
 обновляет таймер `homegate-snapshots.timer` раз в 30 секунд, складывая
 их в `/var/www/dashboards/snapshots/`. Каталогу нужен контекст
 `httpd_sys_content_t`, иначе nginx отдаст 403 — та же грабля, что с
-webroot для ACME.
+webroot для ACME. Запись выполняется через временный файл и атомарную
+замену, поэтому браузер не увидит недописанный JPEG.
 
 Учётные данные камер лежат в `bot.json` (права 600). RTSP передаёт их
 открытым текстом, поэтому пароль Camera Account должен отличаться от
@@ -447,12 +504,16 @@ long polling без webhook. Конфиг `/opt/homegate/config/bot.json`
 **Что умеет:** `/дом` — сводка (дым, ворота, суммарная мощность, кто
 офлайн), `/энергия` — потребление по розеткам, `/аномалии` — что требует
 внимания, `/whitelist` — что разрешено переключать, `/вкл` и `/выкл` —
-управление, `/кадр` — стоп-кадр с камеры (пока заглушка).
+управление, `/кадр` — стоп-кадры со всех пяти камер, `/кадр N` — кадр
+только с выбранной камеры, `/пароль` — текущие данные входа на главную,
+`/пароль новый` — безопасная смена пароля.
 
 **Управление наследует правила гейта:**
 
 - переключается только то, что явно вписано в `write_whitelist`
   в `bot.json`; всё остальное отклоняется;
+- в текущем белом списке шесть сущностей: три москитольные розетки,
+  свет у Яна и две светодиодные лампы;
 - домены `lock`, `climate`, `water_heater`, `valve`,
   `alarm_control_panel` запрещены в коде и не разблокируются
   через whitelist;
@@ -474,8 +535,9 @@ long polling без webhook. Конфиг `/opt/homegate/config/bot.json`
 ## Частые операции
 
 ```bash
-# статус всего
-systemctl status homegate nginx node_exporter
+# статус всего нативного контура
+systemctl status nginx homegate homegate-mcp homegate-bot
+systemctl status homegate-snapshots.timer node_exporter
 docker ps
 
 # перезапуск гейта после правки кода или конфига
@@ -487,6 +549,16 @@ tail -50 /opt/homegate/logs/audit.log
 
 # проверка гейта
 curl -s http://127.0.0.1:8800/claude-mcp/health
+
+# проверка FastMCP
+systemctl status homegate-mcp
+
+# обновить стоп-кадры вручную
+systemctl start homegate-snapshots.service
+ls -lh /var/www/dashboards/snapshots/
+
+# посмотреть или сменить пароль главной
+# команды владельца в Telegram: /пароль и /пароль новый
 
 # цели прометея
 curl -s "http://127.0.0.1:9090/api/v1/targets?state=active" | python3 -m json.tool
@@ -581,10 +653,10 @@ precedence ::ffff:0:0/96  100
 - **Zigbee** — стик на CC2652P (аналог ZBDongle-P) идёт в Zigbee2MQTT без
   перепрошивки. Датчики, висящие сейчас на стороннем хабе, при переносе
   из него уйдут: устройство живёт только в одной сети Zigbee
-- **Камеры** — подключена одна из шести (`192.168.69.140`, C200).
-  Остальные три опознанных хоста (`.61`, `.70`, `.121`) ждут, пока
-  на них создадут Camera Account; ещё две в сканах не отозвались
+- **Видеоаналитика** — пять камер дают RTSP и стоп-кадры, но Frigate,
+  запись архива и детекция объектов ещё не развёрнуты
+- **Шестая камера** — в доступной сети не обнаружена; если появится,
+  определить IP, создать Camera Account и добавить её в `bot.json`
 - **Мозги бота** — ответы на свободные вопросы и веб-поиск не
   подключены: нужны ключи к LLM и к поисковому API
 - **Бэкап Qdrant** — снапшоты по расписанию, хранить у владельца сервера
-- **Доступ снаружи** после переезда: при CGNAT нужен WireGuard-туннель
