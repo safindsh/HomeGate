@@ -1,0 +1,8 @@
+[Unit]
+Description=HomeGate: обновление стоп-кадров камер для стартовой страницы
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/homegate/venv/bin/python /opt/homegate/bot/refresh_snapshots.py
+TimeoutStartSec=60

@@ -136,12 +136,23 @@
     <div class="card col-8">
       <div class="card-title"><span>📷</span> Камеры Tapo</div>
       <div class="cameras" id="cameras-grid">
-        <div class="cam-tile"><div class="cam-placeholder"><div class="icon">📷</div><p>Камера 1</p></div></div>
-        <div class="cam-tile"><div class="cam-placeholder"><div class="icon">📷</div><p>Камера 2</p></div></div>
-        <div class="cam-tile"><div class="cam-placeholder"><div class="icon">📷</div><p>Камера 3</p></div></div>
-        <div class="cam-tile"><div class="cam-placeholder"><div class="icon">📷</div><p>Камера 4</p></div></div>
-        <div class="cam-tile"><div class="cam-placeholder"><div class="icon">📷</div><p>Камера 5</p></div></div>
-        <div class="cam-tile"><div class="cam-placeholder"><div class="icon">📷</div><p>Камера 6</p></div></div>
+        <div class="cam-tile" data-cam="1">
+          <img id="cam-img-1" src="/snapshots/cam1.jpg" alt="Камера 1">
+          <span class="cam-live">LIVE</span>
+          <span class="cam-label">Камера 1</span>
+        </div>
+        <div class="cam-tile">
+          <div class="cam-placeholder"><div class="icon">CAM</div>
+          <p>ждёт Camera Account</p></div>
+        </div>
+        <div class="cam-tile">
+          <div class="cam-placeholder"><div class="icon">CAM</div>
+          <p>ждёт Camera Account</p></div>
+        </div>
+        <div class="cam-tile">
+          <div class="cam-placeholder"><div class="icon">CAM</div>
+          <p>ждёт Camera Account</p></div>
+        </div>
       </div>
     </div>
 
@@ -330,6 +341,15 @@ async function loadStates() {
 
 loadStates();
 setInterval(loadStates, 30000);
+
+function refreshCams() {
+  document.querySelectorAll('.cam-tile img').forEach(img => {
+    const base = img.src.split('?')[0];
+    img.src = base + '?t=' + Date.now();
+  });
+}
+setInterval(refreshCams, 30000);
+
 </script>
 </body>
 </html>

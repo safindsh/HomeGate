@@ -1,0 +1,10 @@
+[Unit]
+Description=HomeGate: обновлять стоп-кадры каждые 30 секунд
+
+[Timer]
+OnBootSec=60s
+OnUnitActiveSec=30s
+AccuracySec=5s
+
+[Install]
+WantedBy=timers.target

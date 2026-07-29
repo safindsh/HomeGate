@@ -18,6 +18,8 @@ from pathlib import Path
 
 import httpx
 
+import snapshot
+
 CONFIG_PATH = Path("/opt/homegate/config/config.json")
 BOT_CONFIG_PATH = Path("/opt/homegate/config/bot.json")
 AUDIT_LOG = Path("/opt/homegate/logs/bot_audit.log")
@@ -225,6 +227,18 @@ async def do_switch(client, chat_id: int, entity: str, turn_on: bool) -> str:
     return "<code>" + entity + "</code> -> <b>" + ("включено" if turn_on else "выключено") + "</b>"
 
 
+async def tg_send_photo(client, chat_id: int, jpeg: bytes, caption: str):
+    try:
+        await client.post(
+            TG_API + "/sendPhoto",
+            data={"chat_id": str(chat_id), "caption": caption},
+            files={"photo": ("snapshot.jpg", jpeg, "image/jpeg")},
+            timeout=60,
+        )
+    except Exception as e:
+        log.warning("sendPhoto failed: %s", e)
+
+
 async def tg_send(client, chat_id: int, text: str):
     try:
         await client.post(
@@ -249,7 +263,7 @@ HELP = """<b>HomeGate - бот дома</b>
 /whitelist - чем разрешено управлять
 /вкл entity_id - включить
 /выкл entity_id - выключить
-/кадр - стоп-кадр с камеры
+/кадр - стоп-кадр со всех камер, /кадр 1 - с одной
 /help - эта справка
 
 Управление работает только для устройств из белого списка.
@@ -309,14 +323,41 @@ async def handle(client, msg: dict):
         return
 
     if cmd in ("кадр", "снимок", "snapshot", "cam"):
-        await tg_send(
-            client, chat_id,
-            "Камеры пока не подключены.\n\n"
-            "Нужно в приложении Tapo для каждой камеры создать "
-            "<b>Camera Account</b> (Настройки -> Дополнительно -> "
-            "Учётная запись камеры). После этого станет доступен RTSP "
-            "и я включу сюда стоп-кадры.",
-        )
+        cams = snapshot.list_cameras()
+        pending = snapshot.pending_count()
+
+        if not cams:
+            await tg_send(client, chat_id,
+                          "Ни одна камера не подключена. Создай Camera Account "
+                          "в приложении Tapo: камера -> шестерёнка -> "
+                          "Расширенные настройки -> Учётная запись камеры.")
+            return
+
+        # какие камеры снимать: все или конкретную (/кадр 2)
+        if args and args[0] in cams:
+            targets = [args[0]]
+        elif args:
+            await tg_send(client, chat_id,
+                          "Нет камеры {}. Доступны: {}".format(
+                              args[0], ", ".join(sorted(cams))))
+            return
+        else:
+            targets = sorted(cams)
+
+        await tg_send(client, chat_id, "Снимаю ({} шт), секунду...".format(len(targets)))
+
+        for cid in targets:
+            jpeg, caption = await asyncio.to_thread(snapshot.grab, cid)
+            if jpeg:
+                await tg_send_photo(client, chat_id, jpeg, caption)
+                audit(chat_id, "SNAPSHOT", cid)
+            else:
+                await tg_send(client, chat_id, caption)
+                audit(chat_id, "SNAPSHOT_FAIL", cid)
+
+        if pending:
+            await tg_send(client, chat_id,
+                          "Ещё {} камер(ы) ждут Camera Account в приложении Tapo.".format(pending))
         return
 
     await tg_send(client, chat_id, "Не понял команду. /help - список того, что умею.")

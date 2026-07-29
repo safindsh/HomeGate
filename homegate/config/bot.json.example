@@ -9,5 +9,22 @@
     "switch.svet_u_iana_switch_1",
     "light.svetodiodnaia_lampochka",
     "light.svetodiodnaia_lampochka_2"
-  ]
+  ],
+  "_comment_cameras": "Camera Account создаётся в приложении Tapo: камера -> шестерёнка -> Расширенные настройки -> Учётная запись камеры. Пока аккаунт не создан, порт 554 закрыт и камера сюда не попадает.",
+  "camera_user": "ЛОГИН_CAMERA_ACCOUNT",
+  "camera_pass": "ПАРОЛЬ_CAMERA_ACCOUNT",
+  "cameras": {
+    "1": {
+      "ip": "192.168.69.140",
+      "name": "Камера 1"
+    }
+  },
+  "cameras_pending": {
+    "_note": "эти хосты опознаны как Tapo, но Camera Account на них ещё не создан",
+    "ips": [
+      "192.168.69.61",
+      "192.168.69.70",
+      "192.168.69.121"
+    ]
+  }
 }
