@@ -1,0 +1,14 @@
+api:
+  listen: "127.0.0.1:1984"
+
+rtsp:
+  listen: "127.0.0.1:8554"
+
+webrtc:
+  listen: "127.0.0.1:8555/tcp"
+
+log:
+  level: info
+
+# Generate the private streams section with ./render_config.py.
+streams: {}

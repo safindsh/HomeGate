@@ -1,8 +1,8 @@
 # HomeGate
 
 Конфигурация домашнего сервера: Home Assistant, два MCP-интерфейса,
-векторная память, Telegram-бот, пять RTSP-камер, мониторинг с алертами
-и реверс-прокси.
+векторная память, Telegram-бот, пять RTSP-камер с живым просмотром,
+мониторинг с алертами и реверс-прокси.
 
 Сервер стоит в частном доме и обслуживает домашнюю автоматику.
 Хозяин дома пользуется им через своего Claude, администратор — по SSH.
@@ -15,8 +15,10 @@
 - Оба MCP-интерфейса работают без Basic Auth: `/claude-mcp` использует
   токенные роли, а доверенный `/homegate-mcp` с фиксированной admin-ролью
   закрыт отдельным allow-списком nginx.
-- Подключены все пять найденных Tapo-камер; стоп-кадры обновляются раз
-  в 30 секунд и доступны на главной и через Telegram-бота.
+- Подключены все пять найденных Tapo-камер. Стоп-кадры обновляются раз
+  в 30 секунд и служат превью на главной и в Telegram-боте. Нажатие
+  на плитку открывает живой MSE-поток через go2rtc; трансляция запускается
+  по требованию и прекращается при закрытии попапа.
 - Telegram-бот отвечает на свободные вопросы через Groq, ищет актуальные
   сведения через Tavily и использует `dima_memory` как долговременную
   память. Tavily вызывается через узкий TLS-прокси на Sol, потому что
@@ -36,6 +38,7 @@ homeassistant/           Home Assistant (compose + configuration.yaml)
 homegate/app/            MCP-гейт: FastAPI, типизированные инструменты
 homegate/bot/            Telegram-бот, AI-инструменты и стоп-кадры камер
 homegate/config/         шаблоны конфигов (реальные конфиги не в git)
+go2rtc/                  compose, шаблон и генератор потоков камер
 qdrant/                  векторная память (compose)
 monitoring/              Prometheus, Grafana, Loki, Promtail, Alertmanager
 dashboards/index.html    стартовая страница с состоянием дома
@@ -56,6 +59,7 @@ docs/network-report.md   инвентаризация домашней сети
 | homegate-mcp (FastMCP) | нативно, venv | 127.0.0.1:8801 | systemd |
 | homegate-bot | нативно, venv | long polling | systemd |
 | homegate-snapshots | нативно, venv | каждые 30 секунд | systemd timer |
+| go2rtc | Docker | 127.0.0.1:1984, :8554, :8555 | compose |
 | Home Assistant | Docker | 8123 (host network) | compose |
 | Qdrant | Docker | 127.0.0.1:6333 | compose |
 | Prometheus | Docker | 127.0.0.1:9090 | compose |
@@ -73,6 +77,7 @@ Qdrant намеренно не проксируется.
 | Адрес | Что |
 |---|---|
 | `https://<host>/` | стартовая страница: состояние дома, графики |
+| `https://<host>/go2rtc/` | защищённый прокси живых камер |
 | `https://<host>/grafana/` | Grafana |
 | `https://<host>/claude-mcp` | основной типизированный MCP-гейт |
 | `https://<host>/homegate-mcp` | FastMCP-коннектор для внешних агентов |
@@ -103,8 +108,8 @@ deny all;
 доверенный admin-канал и поэтому ограничивается отдельным allow-списком
 nginx.
 
-Basic Auth относится **только к главной странице** и её статическим
-файлам. MCP, Grafana и служебные API его не наследуют: у каждого из них
+Basic Auth относится **только к главной странице**, её статическим
+файлам и `/go2rtc/`. MCP, Grafana и служебные API его не наследуют: у каждого из них
 свои ограничения доступа. Не переносить `auth_basic` обратно на уровень
 всего HTTPS-сервера — это заблокирует MCP-коннектор ответом `401`.
 
@@ -236,11 +241,71 @@ certbot --nginx -d safindsh.keenetic.link
 cd /opt/qdrant && docker compose up -d
 cd /opt/monitoring && docker compose up -d
 cd /opt/homeassistant && docker compose up -d
+install -d -m 0750 /opt/go2rtc-homegate
+cp go2rtc/docker-compose.yml go2rtc/render_config.py /opt/go2rtc-homegate/
+chmod 0755 /opt/go2rtc-homegate/render_config.py
+/opt/go2rtc-homegate/render_config.py
+cd /opt/go2rtc-homegate && docker compose up -d
 /opt/homegate/venv/bin/pip install -r homegate/bot/requirements-ai.txt
 systemctl enable --now node_exporter homegate nginx
 systemctl enable --now homegate-mcp homegate-bot
 systemctl enable --now homegate-snapshots.timer
 ```
+
+### Живые камеры через go2rtc
+
+Превью и трансляция разделены, чтобы главная страница не держала пять
+постоянных видеосоединений:
+
+1. `homegate-snapshots.timer` каждые 30 секунд получает JPEG из
+   `stream2` каждой Tapo и обновляет
+   `/var/www/dashboards/snapshots/camN.jpg`.
+2. Стартовая страница показывает эти JPEG как лёгкие превью.
+3. Нажатие открывает
+   `/go2rtc/stream.html?src=camN&mode=mse` во всплывающем просмотре.
+4. Nginx проверяет Basic Auth и проксирует страницу проигрывателя и
+   WebSocket в `127.0.0.1:1984`.
+5. При закрытии попапа `iframe` теряет `src`, соединение завершается.
+
+RTSP-логины не хранятся в Git. `go2rtc/render_config.py` читает их и
+перечень камер из закрытого `/opt/homegate/config/bot.json`, URL-кодирует
+учётные данные и создаёт `/opt/go2rtc-homegate/go2rtc.yaml` с правами
+`0600`. Этот файл исключён через `.gitignore`.
+
+Все интерфейсы go2rtc слушают только loopback:
+
+```text
+127.0.0.1:1984  HTTP API, player и MSE WebSocket
+127.0.0.1:8554  внутренний RTSP
+127.0.0.1:8555  внутренний WebRTC TCP
+```
+
+Наружу не публикуются RTSP/WebRTC-порты. Единственная внешняя точка
+входа — HTTPS location `/go2rtc/` в Nginx.
+
+Проверка:
+
+```bash
+cd /opt/go2rtc-homegate
+docker compose ps
+curl -s http://127.0.0.1:1984/api/streams | python3 -m json.tool
+for cam in cam1 cam2 cam3 cam4 cam5; do
+  curl -fsS --max-time 20 \
+    "http://127.0.0.1:1984/api/frame.jpeg?src=${cam}" \
+    -o "/tmp/${cam}.jpg"
+done
+nginx -t
+```
+
+После изменения адресов камер или пароля Tapo:
+
+```bash
+/opt/go2rtc-homegate/render_config.py
+cd /opt/go2rtc-homegate && docker compose restart
+```
+
+Для отката остановить compose, вернуть `index.html` и `homegate.conf`
+из резервной копии, затем выполнить `nginx -t && nginx -s reload`.
 
 ### 5. Home Assistant
 

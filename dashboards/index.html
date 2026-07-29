@@ -63,7 +63,7 @@
   .cam-tile .cam-placeholder p { font-size: 11px; color: var(--muted); margin-top: 4px; }
   .cam-live { position: absolute; top: 6px; right: 8px; background: var(--warn); color: #fff; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 3px; letter-spacing: 0.5px; }
 
-  /* ПРОСМОТР КАМЕР */
+  /* ЖИВАЯ ТРАНСЛЯЦИЯ КАМЕР */
   body.camera-viewer-open { overflow: hidden; }
   .camera-viewer { position: fixed; inset: 0; z-index: 1000; display: none; flex-direction: column; background: rgba(3,7,12,0.96); }
   .camera-viewer.open { display: flex; }
@@ -72,13 +72,12 @@
   .camera-viewer-hint { color: var(--muted); font-size: 11px; font-weight: 400; margin-left: 10px; }
   .camera-viewer-btn { min-width: 44px; min-height: 40px; padding: 0 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg3); color: var(--text); font-size: 18px; cursor: pointer; }
   .camera-viewer-btn:hover { color: var(--accent); border-color: var(--accent); }
-  .camera-viewer-stage { min-height: 0; flex: 1; display: flex; align-items: center; justify-content: center; overflow: hidden; touch-action: none; cursor: grab; }
-  .camera-viewer-stage.dragging { cursor: grabbing; }
-  .camera-viewer-image { max-width: 94vw; max-height: calc(100vh - 78px); object-fit: contain; user-select: none; -webkit-user-drag: none; will-change: transform; transform-origin: center center; }
+  .camera-viewer-stage { min-height: 0; flex: 1; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+  .camera-viewer-image { width: 100%; height: 100%; border: 0; background: #000; transform-origin: center center; }
   @media(max-width:700px) {
     .camera-viewer-hint { display: none; }
     .camera-viewer-bar { min-height: 54px; padding-left: 12px; }
-    .camera-viewer-image { max-width: 100vw; max-height: calc(100vh - 54px); }
+    .camera-viewer-image { width: 100vw; height: calc(100vh - 54px); }
   }
 
   /* СЕНСОРЫ */
@@ -281,13 +280,13 @@
   <div class="camera-viewer-bar">
     <div class="camera-viewer-title" id="camera-viewer-title">
       Камера
-      <span class="camera-viewer-hint">Колесо или pinch — масштаб · тянуть — перемещение · двойной клик — сброс</span>
+      <span class="camera-viewer-hint">Живая трансляция · запуск по требованию</span>
     </div>
     <button class="camera-viewer-btn" id="camera-viewer-reset" type="button" aria-label="Сбросить масштаб">1:1</button>
     <button class="camera-viewer-btn" id="camera-viewer-close" type="button" aria-label="Закрыть просмотр">×</button>
   </div>
   <div class="camera-viewer-stage" id="camera-viewer-stage">
-    <img class="camera-viewer-image" id="camera-viewer-image" alt="">
+    <iframe class="camera-viewer-image" id="camera-viewer-image" title="Живая трансляция камеры" allow="autoplay; fullscreen"></iframe>
   </div>
 </div>
 
@@ -431,11 +430,10 @@ function resetCameraViewer() {
 }
 
 function openCameraViewer(tile) {
-  const source = tile.querySelector('img');
-  const label = tile.querySelector('.cam-label')?.textContent || source.alt || 'Камера';
+  const cam = tile.dataset.cam;
+  const label = tile.querySelector('.cam-label')?.textContent || `Камера ${cam}`;
   viewerPreviousFocus = document.activeElement;
-  cameraViewerImage.src = source.currentSrc || source.src;
-  cameraViewerImage.alt = label;
+  cameraViewerImage.src = `/go2rtc/stream.html?src=cam${encodeURIComponent(cam)}&mode=mse`;
   cameraViewerTitle.childNodes[0].textContent = label + ' ';
   resetCameraViewer();
   cameraViewer.classList.add('open');

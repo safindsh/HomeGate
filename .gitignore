@@ -34,3 +34,6 @@ secrets/
 snapshots/
 storage/
 venv/
+
+# go2rtc runtime config contains RTSP credentials.
+go2rtc/go2rtc.yaml
