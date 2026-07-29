@@ -41,5 +41,16 @@
   },
   "landing_user": "safindsh",
   "landing_pass": "ПАРОЛЬ_СТАРТОВОЙ_СТРАНИЦЫ",
-  "_comment_landing": "пароль стартовой страницы в открытом виде, чтобы бот мог его показать по команде /пароль; htpasswd хранит только хэш и восстановлению не подлежит"
+  "_comment_landing": "пароль стартовой страницы в открытом виде, чтобы бот мог его показать по команде /пароль; htpasswd хранит только хэш и восстановлению не подлежит",
+  "_comment_ai": "AI не управляет устройствами: только Tavily, Qdrant, чтение Home Assistant и снимки. Секреты хранятся только в реальном bot.json с правами 600.",
+  "ai": {
+    "enabled": false,
+    "groq_key": "ЗДЕСЬ_GROQ_API_KEY",
+    "tavily_key": "ЗДЕСЬ_TAVILY_API_KEY",
+    "tavily_proxy_url": "",
+    "tavily_proxy_token": "",
+    "model": "llama-3.3-70b-versatile",
+    "daily_token_limit": 500000,
+    "history_messages": 16
+  }
 }

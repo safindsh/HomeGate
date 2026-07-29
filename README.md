@@ -17,6 +17,11 @@
   закрыт отдельным allow-списком nginx.
 - Подключены все пять найденных Tapo-камер; стоп-кадры обновляются раз
   в 30 секунд и доступны на главной и через Telegram-бота.
+- Telegram-бот отвечает на свободные вопросы через Groq, ищет актуальные
+  сведения через Tavily и использует `dima_memory` как долговременную
+  память. Tavily вызывается через узкий TLS-прокси на Sol, потому что
+  провайдер отклоняет прямые запросы с IP HomeGate. AI-инструменты имеют
+  только чтение и отправку снимков.
 - Нативные сервисы nginx, homegate, homegate-mcp, homegate-bot,
   homegate-snapshots, node_exporter и Docker активны.
 - Контейнеры Home Assistant, Qdrant и полного мониторингового стека
@@ -29,7 +34,7 @@
 ```
 homeassistant/           Home Assistant (compose + configuration.yaml)
 homegate/app/            MCP-гейт: FastAPI, типизированные инструменты
-homegate/bot/            Telegram-бот и снятие стоп-кадров с камер
+homegate/bot/            Telegram-бот, AI-инструменты и стоп-кадры камер
 homegate/config/         шаблоны конфигов (реальные конфиги не в git)
 qdrant/                  векторная память (compose)
 monitoring/              Prometheus, Grafana, Loki, Promtail, Alertmanager
@@ -206,6 +211,12 @@ chmod 600 /opt/monitoring/.env /opt/qdrant/.env
 Токены генерировать на месте: `openssl rand -hex 32`.
 Не переиспользовать токены из других контуров.
 
+В `bot.json` заполнить секцию `ai`: ключ Groq, параметры модели, дневной
+лимит и размер истории. Для Tavily можно указать прямой ключ либо
+`tavily_proxy_url` и отдельный `tavily_proxy_token`. В боевой схеме
+используется второй вариант; сам Tavily-ключ остаётся на Sol. Файл
+остаётся с правами `600` и не попадает в Git.
+
 ### 3. Сертификат
 
 ```bash
@@ -225,6 +236,7 @@ certbot --nginx -d safindsh.keenetic.link
 cd /opt/qdrant && docker compose up -d
 cd /opt/monitoring && docker compose up -d
 cd /opt/homeassistant && docker compose up -d
+/opt/homegate/venv/bin/pip install -r homegate/bot/requirements-ai.txt
 systemctl enable --now node_exporter homegate nginx
 systemctl enable --now homegate-mcp homegate-bot
 systemctl enable --now homegate-snapshots.timer
@@ -506,7 +518,27 @@ long polling без webhook. Конфиг `/opt/homegate/config/bot.json`
 внимания, `/whitelist` — что разрешено переключать, `/вкл` и `/выкл` —
 управление, `/кадр` — стоп-кадры со всех пяти камер, `/кадр N` — кадр
 только с выбранной камеры, `/пароль` — текущие данные входа на главную,
-`/пароль новый` — безопасная смена пароля.
+`/пароль новый` — безопасная смена пароля, `/search` — прямой поиск
+Tavily, `/memory` и `/save` — чтение и запись домашней RAG-памяти,
+`/clear` — очистка текущего диалога, `/usage` — дневной расход токенов.
+
+Обычный текст передаётся LLM. Модель сама решает, нужен ли Tavily,
+`dima_memory`, состояние Home Assistant или снимок. Явные фразы
+«покажи камеру 3» и «пришли кадры со всех камер» обрабатываются
+детерминированно до обращения к LLM.
+
+**Граница AI.** В наборе инструментов нет управления устройствами,
+shell и чтения секретных конфигов. AI может искать в сети и памяти,
+читать состояние HA и присылать кадры. Изменение состояния дома
+по-прежнему возможно только через явные `/вкл` и `/выкл`, после проверки
+жёстко запрещённых доменов и `write_whitelist`.
+
+**Tavily-прокси.** Прямой Tavily API возвращает `ForbiddenError` с
+исходящего IP HomeGate, хотя тот же ключ работает на Sol. Поэтому
+`https://5.prilutsky.ru/tavily-search` принимает только один метод
+поиска, ограничен в nginx исходящим IP HomeGate и дополнительно требует
+отдельный Bearer-токен. Прокси не предоставляет shell, RAG или другие
+инструменты Sol.
 
 **Управление наследует правила гейта:**
 
@@ -529,6 +561,11 @@ long polling без webhook. Конфиг `/opt/homegate/config/bot.json`
 владелец токена может перехватить поток обновлений и вывести бота из
 строя, а также прочитать всё, что бот присылает — включая будущие
 стоп-кадры с камер.
+
+Ключ Groq и токен Tavily-прокси лежат только в
+`/opt/homegate/config/bot.json` с правами `600`. Сам Tavily API-ключ
+остаётся в закрытом конфиге прокси на Sol. В `bot.json.example`
+находятся только плейсхолдеры.
 
 ---
 
@@ -559,6 +596,12 @@ ls -lh /var/www/dashboards/snapshots/
 
 # посмотреть или сменить пароль главной
 # команды владельца в Telegram: /пароль и /пароль новый
+
+# проверить AI-зависимости и последние ответы
+/opt/homegate/venv/bin/pip show groq tavily-python
+journalctl -u homegate-bot -n 100 --no-pager
+curl -sS -o /dev/null -w '%{http_code}\n' \
+  https://5.prilutsky.ru/tavily-search
 
 # цели прометея
 curl -s "http://127.0.0.1:9090/api/v1/targets?state=active" | python3 -m json.tool
@@ -635,6 +678,10 @@ precedence ::ffff:0:0/96  100
   `config.json`, `*.env`, `*.key`, `*.crt`, `*_token`, `ha_token`,
   `bot_token`, `secrets/`, `models/`, логи, venv, storage
 - Токены генерировать на месте, не переиспользовать между контурами
+- Groq-ключ и токен Tavily-прокси не писать в systemd-unit, README и Git;
+  они живут только в закрытом `bot.json`; Tavily-ключ остаётся на Sol
+- LLM не должен получать `device_control` или shell в наборе tools:
+  команды записи остаются детерминированными и проходят whitelist
 - Датчики дыма и CO **не вносить в `write_whitelist`**. Пожарная
   сигнализация должна работать автономно; HA — дополнительный слой
   уведомлений, не замена
@@ -657,6 +704,4 @@ precedence ::ffff:0:0/96  100
   запись архива и детекция объектов ещё не развёрнуты
 - **Шестая камера** — в доступной сети не обнаружена; если появится,
   определить IP, создать Camera Account и добавить её в `bot.json`
-- **Мозги бота** — ответы на свободные вопросы и веб-поиск не
-  подключены: нужны ключи к LLM и к поисковому API
 - **Бэкап Qdrant** — снапшоты по расписанию, хранить у владельца сервера
