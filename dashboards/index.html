@@ -211,8 +211,7 @@
         <div class="priority-head"><span class="icon">🚗</span> Ворота</div>
         <div class="priority-main" id="s-gate">Проверяю…</div>
         <div class="gate-list">
-          <div class="gate-row"><span class="gate-name">Ворота 1</span><span id="sw-gate1">—</span></div>
-          <div class="gate-row"><span class="gate-name">Ворота 2</span><span id="sw-gate2">—</span></div>
+          <div class="gate-row"><span class="gate-name">Состояние</span><span id="sw-gate1">—</span></div>
         </div>
       </div>
 
@@ -424,14 +423,11 @@ async function loadStates() {
         ? 'Проверьте питание и связь датчика'
         : 'Система безопасности в норме');
     const gate1 = s['cover.smart_garage_door_opener_door_1'] || 'unavailable';
-    const gate2 = s['cover.wifi_garage_door_module_door_1'] || 'unavailable';
-    const gatesUnavailable = [gate1, gate2].filter(x => x === 'unavailable').length;
-    const gatesOpen = [gate1, gate2].filter(x => x === 'open' || x === 'opening').length;
-    setEl('s-gate', gatesOpen
-      ? `<span class="yellow">${gatesOpen === 2 ? 'Оба открыты' : 'Одни открыты'}</span>`
-      : gatesUnavailable
-        ? '<span class="warn">Не всё на связи</span>'
-        : '<span class="ok">Оба закрыты</span>');
+    setEl('s-gate', gate1 === 'open' || gate1 === 'opening'
+      ? '<span class="yellow">Открыты</span>'
+      : gate1 === 'unavailable'
+        ? '<span class="warn">Нет связи</span>'
+        : '<span class="ok">Закрыты</span>');
     const totalPower = ['sensor.exclusive_shkaf_power','sensor.wifi_rozetka_power',
       'sensor.maskitol_v_komnate_gleba_power','sensor.maskitol_v_komnate_iana_power',
       'sensor.moskitol_spalnia_power']
@@ -447,7 +443,6 @@ async function loadStates() {
     // безопасность
     setEl('sw-smoke', badge(smokeState, '⚠ Дымит!', '✓ Норма'));
     setEl('sw-gate1', badge(gate1, 'Открыты', 'Закрыты'));
-    setEl('sw-gate2', badge(gate2, 'Открыты', 'Закрыты'));
     setEl('sw-feeder', badge(s['binary_sensor.pet_feeder_charging'], 'Заряжается', 'Готова'));
     setEl('sw-feeding', badge(s['binary_sensor.pet_feeder_feeding'], 'Кормит', 'Ожидание'));
 
