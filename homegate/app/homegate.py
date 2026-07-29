@@ -72,8 +72,20 @@ app = FastAPI(title="HomeGate MCP", version="1.0.0")
 
 # ─────────────────────────── авторизация ───────────────────────────
 
-def identify(authorization: str | None) -> dict[str, Any]:
-    """Достаём личность по Bearer-токену."""
+def identify(
+    authorization: str | None,
+    trusted: str | None = None,
+) -> dict[str, Any]:
+    """Личность запроса.
+
+    Доступ устроен как у Team MCP / SkyNet: снаружи до гейта дотягивается
+    только подсеть агентов Claude (allow-список на nginx). Для таких запросов
+    nginx подставляет заголовок X-Homegate-Trusted и ЗАТИРАЕТ его у всех
+    входящих, поэтому подделать снаружи нельзя. Доверенный запрос = admin
+    без токена. Остальные (Дима с телефона по локалке и т.п.) — по Bearer.
+    """
+    if trusted == "agent":
+        return {"name": "claude-agent", "role": "admin"}
     if not authorization:
         raise HTTPException(401, "missing authorization")
     token = authorization.removeprefix("Bearer ").strip()
@@ -538,8 +550,12 @@ def service_status() -> str:
 # ─────────────────────────── MCP endpoint ───────────────────────────
 
 @app.post("/claude-mcp")
-async def mcp(request: Request, authorization: str | None = Header(None)):
-    ident = identify(authorization)
+async def mcp(
+    request: Request,
+    authorization: str | None = Header(None),
+    x_homegate_trusted: str | None = Header(None),
+):
+    ident = identify(authorization, x_homegate_trusted)
     body = await request.json()
     method = body.get("method")
     rpc_id = body.get("id")

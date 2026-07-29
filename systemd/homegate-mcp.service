@@ -1,0 +1,13 @@
+[Unit]
+Description=HomeGate FastMCP connector for Claude
+After=network.target homegate.service
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/homegate/app
+ExecStart=/opt/homegate/venv/bin/python /opt/homegate/app/server_claude.py
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
