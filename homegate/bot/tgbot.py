@@ -44,6 +44,8 @@ HTPASSWD = Path("/etc/nginx/.htpasswd_landing")
 LANDING_USER = "safindsh"
 CAMERA_SENT = "__CAMERA_SENT__"
 MAX_TOOL_ITERS = 4
+ALERT_COOLDOWN_SECONDS = 15 * 60
+MEMORY_FLUSH_SECONDS = 60 * 60
 
 FORBIDDEN_DOMAINS = {
     "lock",
@@ -106,6 +108,7 @@ tavily_client = (
     else None
 )
 histories = {}
+pending_memory_dialogues = {}
 
 
 def audit(chat_id, action: str, detail: str) -> None:
@@ -115,6 +118,15 @@ def audit(chat_id, action: str, detail: str) -> None:
     )
     with AUDIT_LOG.open("a", encoding="utf-8") as f:
         f.write(line)
+
+
+def queue_memory_message(chat_id: int, role: str, content: str) -> None:
+    content = (content or "").strip()
+    if chat_id != CFG["chat_id"] or role not in {"user", "assistant"} or not content:
+        return
+    pending_memory_dialogues.setdefault(chat_id, []).append(
+        {"role": role, "content": content}
+    )
 
 
 SYSTEM_PROMPT = """Ты — домашний AI-помощник HomeGate.
@@ -675,6 +687,7 @@ async def ask_ai(client, chat_id: int, user_text: str) -> str:
 
     history = histories.setdefault(chat_id, [])
     history.append({"role": "user", "content": user_text})
+    queue_memory_message(chat_id, "user", user_text)
     histories[chat_id] = trim_history(history)
     messages = [
         {
@@ -729,6 +742,9 @@ async def ask_ai(client, chat_id: int, user_text: str) -> str:
                     histories[chat_id].append(
                         {"role": "assistant", "content": "[Стоп-кадр отправлен]"}
                     )
+                    queue_memory_message(
+                        chat_id, "assistant", "[Стоп-кадр отправлен]"
+                    )
                     histories[chat_id] = trim_history(histories[chat_id])
                     return CAMERA_SENT
                 tool_results.append(
@@ -750,6 +766,7 @@ async def ask_ai(client, chat_id: int, user_text: str) -> str:
         if not message.tool_calls:
             reply = message.content or "(пустой ответ)"
             histories[chat_id].append({"role": "assistant", "content": reply})
+            queue_memory_message(chat_id, "assistant", reply)
             histories[chat_id] = trim_history(histories[chat_id])
             return reply
 
@@ -791,6 +808,9 @@ async def ask_ai(client, chat_id: int, user_text: str) -> str:
             if result == CAMERA_SENT:
                 histories[chat_id].append(
                     {"role": "assistant", "content": "[Стоп-кадр отправлен]"}
+                )
+                queue_memory_message(
+                    chat_id, "assistant", "[Стоп-кадр отправлен]"
                 )
                 histories[chat_id] = trim_history(histories[chat_id])
                 return CAMERA_SENT
@@ -882,6 +902,7 @@ async def handle(client, msg: dict):
 
     if text.startswith("/") and cmd == "clear":
         histories.pop(chat_id, None)
+        pending_memory_dialogues.pop(chat_id, None)
         await tg_send(client, chat_id, "AI-диалог очищен.")
         return
 
@@ -1030,6 +1051,7 @@ async def handle(client, msg: dict):
 
 async def alarm_watch(client):
     prev = {}
+    last_sent = {}
     watch = {
         "binary_sensor.smoke_alarm_smoke": ("ДЫМ! Сработал датчик дыма.", "on"),
         "cover.wifi_garage_door_module_door_1": ("Ворота открыты.", "open"),
@@ -1044,12 +1066,46 @@ async def alarm_watch(client):
                     continue
                 cur = s["state"]
                 if eid in prev and prev[eid] != cur and cur == trigger:
-                    await tg_send(client, CFG["chat_id"], text)
-                    audit(0, "ALERT", eid + "=" + cur)
+                    now = time.monotonic()
+                    if now - last_sent.get(eid, 0) >= ALERT_COOLDOWN_SECONDS:
+                        await tg_send(client, CFG["chat_id"], text)
+                        last_sent[eid] = now
+                        audit(0, "ALERT", eid + "=" + cur)
+                    else:
+                        log.info("alarm_watch: уведомление %s подавлено cooldown", eid)
                 prev[eid] = cur
         except Exception as e:
             log.warning("alarm_watch: %s", e)
         await asyncio.sleep(30)
+
+
+async def memory_flush_watch():
+    while True:
+        await asyncio.sleep(MEMORY_FLUSH_SECONDS)
+        for chat_id in list(pending_memory_dialogues):
+            pending = pending_memory_dialogues.get(chat_id, [])
+            batch = list(pending)
+            if not batch:
+                continue
+            lines = []
+            for item in batch:
+                speaker = "Дима" if item["role"] == "user" else "HomeGate"
+                lines.append("{}: {}".format(speaker, item["content"]))
+            text = "Telegram-диалог HomeGate за последний час:\n\n" + "\n\n".join(
+                lines
+            )
+            try:
+                await hg.memory_save(
+                    text,
+                    ["telegram", "telegram_chat", "автосохранение"],
+                    {"name": "homegate-bot"},
+                )
+                del pending[: len(batch)]
+                if not pending:
+                    pending_memory_dialogues.pop(chat_id, None)
+                audit(chat_id, "MEMORY_AUTO_SAVE", str(len(batch)))
+            except Exception as exc:
+                log.warning("memory_flush_watch: %s", exc)
 
 
 async def main():
@@ -1066,6 +1122,7 @@ async def main():
             pass
 
         asyncio.create_task(alarm_watch(client))
+        asyncio.create_task(memory_flush_watch())
 
         offset = None
         while True:
