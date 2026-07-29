@@ -260,7 +260,7 @@
 <footer>HomeGate · Самара · <span id="footer-time"></span> · Обновление раз в 30 сек</footer>
 
 <script>
-const HA = '/api/ha';
+const HA_STATES = '/api/home-states';
 
 function badge(state, on_label, off_label) {
   if (state === 'on' || state === 'open' || state === 'true')
@@ -274,8 +274,8 @@ function setEl(id, html) { const e=document.getElementById(id); if(e) e.innerHTM
 
 async function loadStates() {
   try {
-    const r = await fetch(HA + '/states');
-    if (!r.ok) return;
+    const r = await fetch(HA_STATES, {cache: 'no-store'});
+    if (!r.ok) throw new Error(`Home Assistant API: HTTP ${r.status}`);
     const states = await r.json();
     const s = {};
     states.forEach(x => s[x.entity_id] = x.state);
@@ -344,7 +344,10 @@ async function loadStates() {
     const now = new Date();
     setEl('upd-time', 'Обновлено: ' + now.toLocaleTimeString('ru-RU'));
     document.getElementById('footer-time').textContent = now.toLocaleDateString('ru-RU', {weekday:'long', day:'numeric', month:'long'});
-  } catch(e) { console.error('HA fetch error:', e); }
+  } catch(e) {
+    console.error('HA fetch error:', e);
+    setEl('upd-time', '<span class="warn">Ошибка обновления данных</span>');
+  }
 }
 
 loadStates();
