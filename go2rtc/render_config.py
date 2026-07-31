@@ -29,7 +29,7 @@ def main():
     for camera_id, camera in sorted(cameras.items(), key=lambda item: int(item[0])):
         streams.append(
             f'  cam{camera_id}: "rtsp://{username}:{password}'
-            f'@{camera["ip"]}:554/stream2"'
+            f'@{camera["ip"]}:554/stream1"'
         )
 
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
