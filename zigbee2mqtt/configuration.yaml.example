@@ -1,0 +1,46 @@
+homeassistant:
+  enabled: true
+mqtt:
+  server: mqtt://127.0.0.1:1883
+  user: homegate
+  password: ЗДЕСЬ_ПАРОЛЬ_MQTT
+serial:
+  port: /dev/serial/by-id/usb-1a86_USB_Serial-if00-port0
+  adapter: zstack
+  baudrate: 115200
+frontend:
+  enabled: true
+  port: 8080
+  host: 127.0.0.1
+  auth_token: ЗДЕСЬ_ТОКЕН_ФРОНТЕНДА
+advanced:
+  log_level: info
+  network_key:
+    - 199
+    - 148
+    - 94
+    - 76
+    - 230
+    - 54
+    - 138
+    - 113
+    - 70
+    - 52
+    - 113
+    - 138
+    - 31
+    - 62
+    - 220
+    - 27
+  pan_id: 29212
+  ext_pan_id:
+    - 13
+    - 43
+    - 235
+    - 126
+    - 86
+    - 83
+    - 31
+    - 166
+  channel: 20
+version: 5
