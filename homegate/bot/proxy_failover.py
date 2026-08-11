@@ -2,16 +2,21 @@
 
 Проблема, которую решает: бот ходит к api.telegram.org, и если текущий
 путь наружу отваливается (провайдер режет IP, узел лёг), бот замолкает
-без внятной ошибки. Здесь — пул из нескольких выходных путей: клиент
-сам проверяет их живость, ходит через рабочий и бесшовно переключается
-на следующий при сбое, а упавший периодически пробует вернуть.
+без внятной ошибки.
 
-Список PROXIES заполняется владельцем (или в bot.json). Модуль ничего
+ВАЖНО про формат эндпоинтов: это НЕ сетевые SOCKS5/HTTP-прокси (как
+в первой версии модуля), а зеркала Telegram Bot API — запрос идёт
+напрямую на другой хост вместо api.telegram.org, тем же путём
+/bot<TOKEN>/<METHOD>. Пример: https://3.prilutsky.ru:8443/bot123:ABC/getMe
+вместо https://api.telegram.org/bot123:ABC/getMe. Модуль подставляет
+базовый URL целиком, а не туннелирует через прокси.
+
+Список ENDPOINTS заполняется владельцем (или в bot.json, ключ
+"proxies" — список строк-URL, без хвоста /bot<token>). Модуль ничего
 не знает про конкретные адреса — только про механику отработки отказа.
 
-Зависимости: httpx[socks]  (pip install "httpx[socks]")
-Формат прокси-строки httpx: socks5://user:pass@host:port  либо
-http://host:port  либо None (прямое соединение, без прокси).
+Автор: Клод Антона, 11 августа 2026 — адаптировано под формат
+зеркал Telegram Bot API (не SOCKS5) 11 августа 2026.
 """
 
 from __future__ import annotations
@@ -25,33 +30,29 @@ import httpx
 
 logger = logging.getLogger("homegate.bot.proxy")
 
-# ── Конфиг: заполнить владельцу ───────────────────────────────────
-# Три слота. Порядок = приоритет: сначала пробуется верхний.
-# None означает "прямое соединение без прокси" — можно оставить один из вариантов, если прямой путь иногда работает.
-# Реальные адреса НЕ вписаны намеренно — подставить здесь или прокинуть
-# из bot.json (см. load_proxies_from_config ниже).
-PROXIES: list[str | None] = [
-    # "socks5://user:pass@HOST_A:PORT",
-    # "socks5://user:pass@HOST_B:PORT",
-    # "socks5://user:pass@HOST_C:PORT",
+# ── Конфиг: заполнить владельцу (или через bot.json -> "proxies") ──
+# Порядок = приоритет: сначала пробуется верхний. Последним стоит
+# оставить https://api.telegram.org как резерв на случай, если он
+# всё-таки отвечает (например, локальный workaround через /etc/hosts).
+ENDPOINTS: list[str] = [
+    # "https://your-mirror.example.com",
+    "https://api.telegram.org",
 ]
 
-# Куда стучимся для проверки живости пути. getMe — дёшево и без побочек.
-HEALTH_URL = "https://api.telegram.org"
-HEALTH_TIMEOUT = 8.0        # сек на health-check одного узла
-REQUEST_TIMEOUT = 30.0      # сек на обычный запрос (long polling задаёт свой)
-COOLDOWN = 120.0            # сколько держать узел "мёртвым" после сбоя, сек
-MAX_ATTEMPTS_PER_CALL = None  # None = перебрать все живые узлы за один вызов
+HEALTH_TIMEOUT = 8.0
+REQUEST_TIMEOUT = 30.0
+COOLDOWN = 120.0
+MAX_ATTEMPTS_PER_CALL = None
 
 
 @dataclass
 class _Endpoint:
-    """Один выходной путь: прокси-строка + его текущее здоровье."""
+    """Один выходной путь: базовый URL + его текущее здоровье."""
 
-    proxy: str | None
+    base_url: str
     label: str
-    dead_until: float = 0.0          # timestamp, до которого считаем мёртвым
-    fails: int = 0                   # подряд неудач (для экспоненты cooldown)
+    dead_until: float = 0.0
+    fails: int = 0
     client: httpx.AsyncClient | None = field(default=None, repr=False)
 
     @property
@@ -60,70 +61,63 @@ class _Endpoint:
 
     def mark_dead(self) -> None:
         self.fails += 1
-        # экспоненциальный, но с потолком: 120с, 240с, 480с, ... до 30 мин
         backoff = min(COOLDOWN * (2 ** (self.fails - 1)), 1800.0)
         self.dead_until = time.monotonic() + backoff
-        logger.warning("прокси %s помечен мёртвым на %.0fс (сбоев подряд: %d)",
+        logger.warning("узел %s помечен мёртвым на %.0fс (сбоев подряд: %d)",
                        self.label, backoff, self.fails)
 
     def mark_alive(self) -> None:
         if self.fails:
-            logger.info("прокси %s снова жив", self.label)
+            logger.info("узел %s снова жив", self.label)
         self.fails = 0
         self.dead_until = 0.0
 
 
 class FailoverClient:
-    """HTTP-клиент с пулом выходных путей и бесшовным переключением.
+    """Telegram Bot API клиент с пулом зеркал и бесшовным переключением.
 
     Использование:
-        fc = FailoverClient(PROXIES)
-        await fc.startup()          # поднять клиентов, проверить узлы
-        r = await fc.request("GET", "https://api.telegram.org/bot.../getMe")
+        fc = FailoverClient(ENDPOINTS, token=BOT_TOKEN)
+        await fc.startup()
+        r = await fc.call("getMe")
+        r = await fc.call("sendMessage", json={"chat_id": ..., "text": ...})
+        r = await fc.call("sendPhoto", data={...}, files={...})
         ...
         await fc.aclose()
     """
 
-    def __init__(self, proxies: list[str | None] | None = None):
-        raw = proxies if proxies is not None else PROXIES
-        if not raw:
-            # пустой пул = один прямой путь, чтобы бот не падал на старте
-            raw = [None]
+    def __init__(self, endpoints: list[str] | None, token: str):
+        raw = endpoints if endpoints else list(ENDPOINTS)
+        self.token = token
         self.endpoints: list[_Endpoint] = [
-            _Endpoint(proxy=p, label=self._label(p, i)) for i, p in enumerate(raw)
+            _Endpoint(base_url=u.rstrip("/"), label=self._label(u, i))
+            for i, u in enumerate(raw)
         ]
         self._lock = asyncio.Lock()
 
     @staticmethod
-    def _label(proxy: str | None, idx: int) -> str:
-        if proxy is None:
-            return f"#{idx}:direct"
-        # прячем креды в логах: socks5://user:pass@host:port -> host:port
-        tail = proxy.split("@")[-1]
-        scheme = proxy.split("://")[0]
-        return f"#{idx}:{scheme}://{tail}"
+    def _label(url: str, idx: int) -> str:
+        host = url.split("://")[-1]
+        return f"#{idx}:{host}"
 
     async def startup(self) -> None:
-        """Поднять по клиенту на каждый путь и прогнать health-check."""
         for ep in self.endpoints:
             ep.client = httpx.AsyncClient(
-                proxy=ep.proxy,
                 timeout=REQUEST_TIMEOUT,
-                trust_env=False,   # не подхватывать системные HTTP(S)_PROXY
+                trust_env=False,
             )
         await self.health_check_all()
 
     async def health_check_all(self) -> None:
-        """Параллельно проверить живость всех узлов."""
         await asyncio.gather(*(self._probe(ep) for ep in self.endpoints))
         live = [e.label for e in self.endpoints if e.alive]
-        logger.info("health-check: живых путей %d из %d %s",
+        logger.info("health-check: живых узлов %d из %d %s",
                     len(live), len(self.endpoints), live)
 
     async def _probe(self, ep: _Endpoint) -> None:
         try:
-            r = await ep.client.get(HEALTH_URL, timeout=HEALTH_TIMEOUT)
-            # api.telegram.org на корень отдаёт 404 — это ОК, путь живой
+            url = f"{ep.base_url}/bot{self.token}/getMe"
+            r = await ep.client.get(url, timeout=HEALTH_TIMEOUT)
             if r.status_code < 500:
                 ep.mark_alive()
                 return
@@ -133,25 +127,27 @@ class FailoverClient:
             ep.mark_dead()
 
     def _ordered(self) -> list[_Endpoint]:
-        """Живые узлы в порядке приоритета, затем — мёртвые как последний шанс."""
         alive = [e for e in self.endpoints if e.alive]
         dead = [e for e in self.endpoints if not e.alive]
         return alive + dead
 
-    async def request(self, method: str, url: str, **kwargs) -> httpx.Response:
-        """Выполнить запрос, перебирая пути при сбое.
+    async def call(self, method: str, **kwargs) -> httpx.Response:
+        """Вызвать метод Telegram Bot API, перебирая зеркала при сбое.
 
-        Бросает httpx.HTTPError только если ВСЕ пути не сработали.
+        method — имя метода (getMe, sendMessage, ...), без /bot<token>/.
+        kwargs пробрасываются в httpx (json=, data=, files=, params=, timeout=).
+        Бросает httpx.HTTPError только если ВСЕ узлы не сработали.
         """
         candidates = self._ordered()
         limit = MAX_ATTEMPTS_PER_CALL or len(candidates)
         last_err: Exception | None = None
 
         for ep in candidates[:limit]:
+            url = f"{ep.base_url}/bot{self.token}/{method}"
             try:
-                r = await ep.client.request(method, url, **kwargs)
-                # 5xx от Telegram — не вина пути, не караем прокси, но пробуем
-                # следующий, вдруг это узловой сбой. 4xx/2xx = путь рабочий.
+                r = await ep.client.post(url, **kwargs) if (
+                    "json" in kwargs or "data" in kwargs or "files" in kwargs
+                ) else await ep.client.get(url, **kwargs)
                 if r.status_code >= 500:
                     last_err = httpx.HTTPError(f"{ep.label}: HTTP {r.status_code}")
                     continue
@@ -162,12 +158,12 @@ class FailoverClient:
                     httpx.RemoteProtocolError) as e:
                 last_err = e
                 ep.mark_dead()
-                logger.warning("путь %s не сработал (%s), пробую следующий",
+                logger.warning("узел %s не сработал (%s), пробую следующий",
                                ep.label, type(e).__name__)
                 continue
 
         raise httpx.HTTPError(
-            f"все {len(candidates)} путей недоступны; последняя ошибка: {last_err}"
+            f"все {len(candidates)} узлов недоступны; последняя ошибка: {last_err}"
         )
 
     async def aclose(self) -> None:
@@ -176,31 +172,21 @@ class FailoverClient:
                 await ep.client.aclose()
 
 
-# ── Помощник: подтянуть прокси из bot.json, не хардкодя в коде ─────
-def load_proxies_from_config(path: str = "/opt/homegate/config/bot.json") -> list[str | None]:
-    """Читает ключ "proxies" из bot.json (список строк). Отсутствует — [None].
-
-    Пример секции в bot.json:
-        "proxies": [
-            "socks5://user:pass@host_a:1080",
-            "socks5://user:pass@host_b:1080",
-            null
-        ]
-    null в списке = прямое соединение как один из вариантов.
-    """
+def load_endpoints_from_config(path: str = "/opt/homegate/config/bot.json") -> list[str] | None:
+    """Читает ключ "proxies" из bot.json (список URL-строк). Отсутствует — None
+    (тогда используется дефолтный ENDPOINTS из этого модуля)."""
     import json
 
     try:
         cfg = json.load(open(path, encoding="utf-8"))
-        proxies = cfg.get("proxies")
-        if isinstance(proxies, list) and proxies:
-            return proxies
+        endpoints = cfg.get("proxies")
+        if isinstance(endpoints, list) and endpoints:
+            return endpoints
     except Exception as e:
         logger.warning("не удалось прочитать proxies из %s: %s", path, e)
-    return [None]
+    return None
 
 
-# ── Опциональный фоновый ре-хелсчек: оживляет упавшие узлы ─────────
 async def periodic_health(fc: FailoverClient, every: float = 60.0) -> None:
     """Запускать как background task: раз в minute перепроверяет мёртвые узлы."""
     while True:

@@ -24,6 +24,7 @@ from pathlib import Path
 import httpx
 
 import snapshot
+import proxy_failover as pf
 
 try:
     from groq import AsyncGroq, BadRequestError
@@ -91,6 +92,7 @@ def load_config() -> dict:
 
 CFG = load_config()
 TG_API = "https://api.telegram.org/bot" + CFG["bot_token"]
+fc: "pf.FailoverClient | None" = None  # инициализируется в main()
 AI_CFG = CFG["ai"]
 AI_READY = bool(
     AI_CFG["enabled"]
@@ -543,8 +545,8 @@ def current_landing_password():
 
 async def tg_send_photo(client, chat_id: int, jpeg: bytes, caption: str):
     try:
-        response = await client.post(
-            TG_API + "/sendPhoto",
+        response = await fc.call(
+            "sendPhoto",
             data={"chat_id": str(chat_id), "caption": caption},
             files={"photo": ("snapshot.jpg", jpeg, "image/jpeg")},
             timeout=60,
@@ -558,8 +560,8 @@ async def tg_send_photo(client, chat_id: int, jpeg: bytes, caption: str):
 
 async def tg_send(client, chat_id: int, text: str):
     try:
-        await client.post(
-            TG_API + "/sendMessage",
+        await fc.call(
+            "sendMessage",
             json={
                 "chat_id": chat_id,
                 "text": text,
@@ -577,8 +579,8 @@ async def tg_send_plain(client, chat_id: int, text: str):
     text = text or "(пустой ответ)"
     for start in range(0, len(text), 4000):
         try:
-            response = await client.post(
-                TG_API + "/sendMessage",
+            response = await fc.call(
+                "sendMessage",
                 json={
                     "chat_id": chat_id,
                     "text": text[start:start + 4000],
@@ -595,8 +597,8 @@ async def tg_send_plain(client, chat_id: int, text: str):
 
 async def tg_typing(client, chat_id: int):
     try:
-        await client.post(
-            TG_API + "/sendChatAction",
+        await fc.call(
+            "sendChatAction",
             json={"chat_id": chat_id, "action": "typing"},
             timeout=10,
         )
@@ -1115,9 +1117,15 @@ async def main():
         AI_READY,
         AI_CFG["model"],
     )
+    global fc
+    endpoints = pf.load_endpoints_from_config() or list(pf.ENDPOINTS)
+    fc = pf.FailoverClient(endpoints, token=CFG["bot_token"])
+    await fc.startup()
+    asyncio.create_task(pf.periodic_health(fc))
+
     async with httpx.AsyncClient() as client:
         try:
-            await client.get(TG_API + "/deleteWebhook", timeout=15)
+            await fc.call("deleteWebhook", timeout=15)
         except Exception:
             pass
 
@@ -1127,8 +1135,8 @@ async def main():
         offset = None
         while True:
             try:
-                r = await client.get(
-                    TG_API + "/getUpdates",
+                r = await fc.call(
+                    "getUpdates",
                     params={"timeout": 30, "offset": offset},
                     timeout=40,
                 )

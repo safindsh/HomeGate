@@ -1,5 +1,5 @@
 {
-  "token": "ЗДЕСЬ_СЕКРЕТ_TOKEN",
+  "token": "ЗДЕСЬ_ТОКЕН_БОТА",
   "chat_id": "ЗДЕСЬ_CHAT_ID",
   "_comment": "write_whitelist - только эти сущности бот может переключать. Меняй список и делай systemctl restart homegate-bot",
   "write_whitelist": [
@@ -12,7 +12,7 @@
   ],
   "_comment_cameras": "Camera Account создаётся в приложении Tapo: камера -> шестерёнка -> Расширенные настройки -> Учётная запись камеры. Пока аккаунт не создан, порт 554 закрыт и камера сюда не попадает.",
   "camera_user": "ЛОГИН_CAMERA_ACCOUNT",
-  "camera_pass": "ЗДЕСЬ_СЕКРЕТ_CAMERA_PASS",
+  "camera_pass": "ПАРОЛЬ_CAMERA_ACCOUNT",
   "cameras": {
     "1": {
       "ip": "192.168.69.140",
@@ -40,7 +40,7 @@
     "ips": []
   },
   "landing_user": "safindsh",
-  "landing_pass": "ЗДЕСЬ_СЕКРЕТ_LANDING_PASS",
+  "landing_pass": "ПАРОЛЬ_СТАРТОВОЙ_СТРАНИЦЫ",
   "_comment_landing": "пароль стартовой страницы в открытом виде, чтобы бот мог его показать по команде /пароль; htpasswd хранит только хэш и восстановлению не подлежит",
   "ai": {
     "enabled": true,
@@ -51,5 +51,11 @@
     "history_messages": 16,
     "tavily_proxy_url": "https://5.prilutsky.ru/tavily-search",
     "tavily_proxy_token": "ЗДЕСЬ_СЕКРЕТ_TAVILY_PROXY_TOKEN"
-  }
+  },
+  "proxies": [
+    "https://mirror-a.example.com",
+    "https://mirror-b.example.com:8443",
+    "https://api.telegram.org"
+  ],
+  "_comment_proxies": "Зеркала Telegram Bot API (не SOCKS5) через proxy_failover.py. Порядок = приоритет. api.telegram.org последним как резерв."
 }
