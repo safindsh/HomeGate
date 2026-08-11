@@ -54,7 +54,8 @@
   },
   "proxies": [
     "https://mirror-a.example.com",
-    "https://mirror-b.example.com:8443",
+    "https://mirror-b.example.com",
+    "https://mirror-c.example.com:8443",
     "https://api.telegram.org"
   ],
   "_comment_proxies": "Зеркала Telegram Bot API (не SOCKS5) через proxy_failover.py. Порядок = приоритет. api.telegram.org последним как резерв."
