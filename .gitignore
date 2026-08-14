@@ -27,6 +27,7 @@ __pycache__/
 bot.json
 bot_token
 config.json
+keenetic.json
 ha_token
 logs/
 models/
