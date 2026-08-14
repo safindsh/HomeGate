@@ -38,7 +38,7 @@
 
 ## Что внутри
 
-``
+```
 homeassistant/           Home Assistant (compose + configuration.yaml)
 homegate/app/            MCP-гейт: FastAPI, типизированные инструменты
 homegate/bot/            Telegram-бот, AI-инструменты и стоп-кадры камер
@@ -54,7 +54,7 @@ scripts/                 эксплуатационные скрипты и сб
 systemd/                 юниты MCP, бота, снимков, nginx и node_exporter
 docs/README.server.md    эксплуатационная документация машины
 docs/network-report.md   инвентаризация домашней сети
-``
+```
 
 ## Сервисы
 
@@ -102,13 +102,13 @@ Qdrant намеренно не проксируется.
 В `location /claude-mcp` — список адресов, как на остальных серверах
 контура:
 
-``
+```
 allow 160.79.106.0/24;   # подсеть Anthropic, откуда приходят агенты Claude
 allow <ноды администратора>;
 allow 127.0.0.1;
 allow 192.168.0.0/16;    # домашняя сеть
 deny all;
-``
+```
 
 Смысл списка — дать агентам доступ к гейту и не открывать управление
 домом всему интернету. Основной `/claude-mcp` дополнительно разделяет
@@ -243,16 +243,16 @@ Telegram-бот дополнительно складывает новые па�
 
 ### 1. База
 
-``bash
+```bash
 dnf install -y epel-release
 dnf install -y git vim tmux htop bind-utils wget policycoreutils-python-utils
 # Docker CE по инструкции docker.com, затем:
 systemctl enable --now docker
-``
+```
 
 ### 2. Секреты
 
-``bash
+```bash
 cp homegate/config/config.example.json /opt/homegate/config/config.json
 cp homegate/config/bot.json.example /opt/homegate/config/bot.json
 cp monitoring/.env.example /opt/monitoring/.env
@@ -260,7 +260,7 @@ cp qdrant/.env.example /opt/qdrant/.env
 cp monitoring/alertmanager/alertmanager.example.yml /opt/monitoring/alertmanager/alertmanager.yml
 chmod 600 /opt/homegate/config/config.json /opt/homegate/config/bot.json
 chmod 600 /opt/monitoring/.env /opt/qdrant/.env
-``
+```
 
 Токены генерировать на месте: `openssl rand -hex 32`.
 Не переиспользовать токены из других контуров.
@@ -273,20 +273,20 @@ chmod 600 /opt/monitoring/.env /opt/qdrant/.env
 
 ### 3. Сертификат
 
-``bash
+```bash
 dnf install -y certbot python3-certbot-nginx
 mkdir -p /var/www/letsencrypt
 semanage fcontext -a -t httpd_sys_content_t "/var/www/letsencrypt(/.*)?"
 restorecon -Rv /var/www/letsencrypt
 certbot --nginx -d safindsh.keenetic.link
-``
+```
 
 В боевой конфигурации используется доверенный сертификат Let's Encrypt
 для `safindsh.keenetic.link`.
 
 ### 4. Сервисы
 
-``bash
+```bash
 cd /opt/qdrant && docker compose up -d
 cd /opt/monitoring && docker compose up -d
 cd /opt/homeassistant && docker compose up -d
@@ -299,7 +299,7 @@ cd /opt/go2rtc-homegate && docker compose up -d
 systemctl enable --now node_exporter homegate nginx
 systemctl enable --now homegate-mcp homegate-bot
 systemctl enable --now homegate-snapshots.timer
-``
+```
 
 ### Живые камеры через go2rtc
 
@@ -324,18 +324,18 @@ RTSP-логины не хранятся в Git. `go2rtc/render_config.py` чит
 
 Все интерфейсы go2rtc слушают только loopback:
 
-``text
+```text
 127.0.0.1:1984  HTTP API, player и MSE WebSocket
 127.0.0.1:8554  внутренний RTSP
 127.0.0.1:8555  внутренний WebRTC TCP
-``
+```
 
 Наружу не публикуются RTSP/WebRTC-порты. Единственная внешняя точка
 входа — HTTPS location `/go2rtc/` в Nginx.
 
 Проверка:
 
-``bash
+```bash
 cd /opt/go2rtc-homegate
 docker compose ps
 curl -s http://127.0.0.1:1984/api/streams | python3 -m json.tool
@@ -345,14 +345,14 @@ for cam in cam1 cam2 cam3 cam4 cam5; do
     -o "/tmp/${cam}.jpg"
 done
 nginx -t
-``
+```
 
 После изменения адресов камер или пароля Tapo:
 
-``bash
+```bash
 /opt/go2rtc-homegate/render_config.py
 cd /opt/go2rtc-homegate && docker compose restart
-``
+```
 
 Для отката остановить compose, вернуть `index.html` и `homegate.conf`
 из резервной копии, затем выполнить `nginx -t && nginx -s reload`.
@@ -449,11 +449,11 @@ cd /opt/go2rtc-homegate && docker compose restart
 при облачной авторизации, выдан под узкий набор путей и `local_key` не
 отдаёт. Рабочие пути API (`tuya_sharing`, модуль `device.py`):
 
-``
+```
 /v1.0/m/life/users/homes          — список домов, работает
 /v1.0/m/life/ha/home/devices      — устройства дома, permission deny
 /v1.0/m/life/ha/devices/detail    — карточка устройства, permission deny
-``
+```
 
 Коды ошибок, которые встретятся по дороге: `1108 uri path invalid` —
 неверный путь; `1013 request time is invalid` — запрос без подписи, одним
@@ -816,7 +816,7 @@ IP, а списком узлов с проверкой живости. Авто�
 
 ## Частые операции
 
-``bash
+```bash
 # статус всего нативного контура
 systemctl status nginx homegate homegate-mcp homegate-bot
 systemctl status homegate-snapshots.timer node_exporter
@@ -856,7 +856,7 @@ curl -X POST http://127.0.0.1:9090/-/reload
 
 # что в памяти дома
 curl -s http://127.0.0.1:6333/collections/dima_memory -H "api-key: <ключ>"
-``
+```
 
 ---
 
@@ -867,10 +867,10 @@ curl -s http://127.0.0.1:6333/collections/dima_memory -H "api-key: <ключ>"
 вместо файла. Certbot при этом падает без внятной причины. Лечится
 разово и персистентно:
 
-``bash
+```bash
 semanage fcontext -a -t httpd_sys_content_t "/var/www/letsencrypt(/.*)?"
 restorecon -Rv /var/www/letsencrypt
-``
+```
 
 Тот же контекст нужен любому новому каталогу под nginx — сравнивать
 через `ls -Zd`.
@@ -879,9 +879,9 @@ restorecon -Rv /var/www/letsencrypt
 глобального IPv6 на сервере нет, и запрос висит до таймаута. Приоритет
 IPv4 задаётся в `/etc/gai.conf`:
 
-``
+```
 precedence ::ffff:0:0/96  100
-``
+```
 
 Этого мало: провайдер режет часть IPv4-адресов Telegram выборочно —
 из пяти проверенных отвечал только `149.154.167.220`. Он прописан в
@@ -941,12 +941,12 @@ precedence ::ffff:0:0/96  100
   порт закрытым или хост отсутствующим, даже когда RTSP реально
   поднят — камеры фильтруют такие пакеты. Рабочий способ — обычный
   TCP `connect()` по каждому адресу подсети:
-  ``bash
+  ```bash
   for i in $(seq 1 254); do
     (timeout 1 bash -c "echo > /dev/tcp/192.168.X.$i/554" 2>/dev/null \
       && echo 192.168.X.$i) &
   done; wait
-  ``
+  ```
   Так нашлись адреса, которых nmap не показывал вовсе.
 
 - **Grafana «неверный» пароль на самом деле верный, но не тот.**
