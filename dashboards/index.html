@@ -72,8 +72,6 @@
   .grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 16px; }
   .col-4 { grid-column: span 4; }
   .col-6 { grid-column: span 6; }
-  .col-6-right { grid-column: 7 / span 6; }
-  @media(max-width:900px) { .col-6-right { grid-column: span 12; } }
   .col-8 { grid-column: span 8; }
   .col-12 { grid-column: span 12; }
   @media(max-width:900px) { .col-4,.col-6,.col-8 { grid-column: span 12; } }
@@ -241,6 +239,14 @@
     <div class="status-pill"><div class="pill-icon">💧</div><div><div class="pill-label">Влажность</div><div class="pill-value" id="s-hum">—</div></div></div>
   </div>
 
+  <!-- РОУТЕР: полный дашборд, первым блоком под статус-баром -->
+  <div class="card" style="margin-bottom:16px;">
+    <div class="card-title"><span>📶</span> Роутер и Wi-Fi</div>
+    <iframe class="grafana-frame" height="1150"
+      src="/grafana/d/homegate-router/router?orgId=1&from=now-1h&to=now&theme=dark&kiosk=true&refresh=5s"
+      title="Роутер"></iframe>
+  </div>
+
   <div class="grid">
     <!-- БЫТОВЫЕ СОСТОЯНИЯ + СВЕТ -->
     <div class="card col-6">
@@ -301,13 +307,6 @@
       </div>
     </div>
 
-    <!-- РОУТЕР: справа от Розеток, компактная врезка одной панели -->
-    <div class="card col-6-right">
-      <div class="card-title"><span>📶</span> Роутер и Wi-Fi</div>
-      <iframe class="grafana-frame" height="200"
-        src="/grafana/d/homegate-router/router?orgId=1&from=now-1h&to=now&theme=dark&kiosk=true&panelId=6&viewPanel=6"
-        title="Скорость WAN"></iframe>
-    </div>
 
     <!-- GRAFANA МОЩНОСТЬ -->
     <div class="card col-12">
