@@ -72,6 +72,8 @@
   .grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 16px; }
   .col-4 { grid-column: span 4; }
   .col-6 { grid-column: span 6; }
+  .col-6-right { grid-column: 7 / span 6; }
+  @media(max-width:900px) { .col-6-right { grid-column: span 12; } }
   .col-8 { grid-column: span 8; }
   .col-12 { grid-column: span 12; }
   @media(max-width:900px) { .col-4,.col-6,.col-8 { grid-column: span 12; } }
@@ -286,14 +288,6 @@
       </div>
     </div>
 
-    <!-- РОУТЕР -->
-    <div class="card col-12">
-      <div class="card-title"><span>📶</span> Роутер и Wi-Fi</div>
-      <iframe class="grafana-frame" height="620"
-        src="/grafana/d/homegate-router/router?orgId=1&from=now-1h&to=now&theme=dark&kiosk=true&refresh=5s"
-        title="Роутер"></iframe>
-    </div>
-
     <!-- РОЗЕТКИ -->
     <div class="card col-6">
       <div class="card-title"><span>🔌</span> Розетки</div>
@@ -305,6 +299,14 @@
         <div class="switch-row"><span class="switch-name">маскитол Ян</span><span class="badge" id="sw-mask-y">—</span></div>
         <div class="switch-row"><span class="switch-name">москитол спальня</span><span class="badge" id="sw-mask-s">—</span></div>
       </div>
+    </div>
+
+    <!-- РОУТЕР: справа от Розеток, компактная врезка одной панели -->
+    <div class="card col-6-right">
+      <div class="card-title"><span>📶</span> Роутер и Wi-Fi</div>
+      <iframe class="grafana-frame" height="200"
+        src="/grafana/d/homegate-router/router?orgId=1&from=now-1h&to=now&theme=dark&kiosk=true&panelId=6&viewPanel=6"
+        title="Скорость WAN"></iframe>
     </div>
 
     <!-- GRAFANA МОЩНОСТЬ -->
@@ -329,6 +331,7 @@
         <a class="nav-btn" href="/grafana/d/homegate-house/dom" target="_blank"><span class="ico">🏡</span> Дашборд Дом</a>
         <a class="nav-btn" href="/grafana/d/homegate-services/servisy-i-logi" target="_blank"><span class="ico">🔧</span> Сервисы</a>
         <a class="nav-btn" href="/grafana/d/rYdddlPWk/node-exporter-full" target="_blank"><span class="ico">🖥️</span> Сервер</a>
+        <a class="nav-btn" href="/grafana/d/homegate-router/router" target="_blank"><span class="ico">📶</span> Роутер</a>
       </div>
     </div>
 

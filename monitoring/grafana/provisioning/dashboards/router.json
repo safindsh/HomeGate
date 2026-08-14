@@ -58,7 +58,8 @@
           ]
         },
         "colorMode": "value"
-      }
+      },
+      "id": 1
     },
     {
       "type": "stat",
@@ -92,7 +93,8 @@
           ]
         },
         "colorMode": "value"
-      }
+      },
+      "id": 2
     },
     {
       "type": "stat",
@@ -126,7 +128,8 @@
           ]
         },
         "colorMode": "value"
-      }
+      },
+      "id": 3
     },
     {
       "type": "stat",
@@ -161,7 +164,8 @@
           ]
         },
         "colorMode": "value"
-      }
+      },
+      "id": 4
     },
     {
       "type": "stat",
@@ -208,7 +212,8 @@
           ]
         },
         "colorMode": "value"
-      }
+      },
+      "id": 5
     },
     {
       "type": "timeseries",
@@ -250,7 +255,8 @@
           "displayMode": "list",
           "placement": "bottom"
         }
-      }
+      },
+      "id": 6
     },
     {
       "type": "timeseries",
@@ -292,7 +298,8 @@
           "displayMode": "list",
           "placement": "bottom"
         }
-      }
+      },
+      "id": 7
     },
     {
       "type": "state-timeline",
@@ -335,7 +342,8 @@
         },
         "overrides": []
       },
-      "options": {}
+      "options": {},
+      "id": 8
     },
     {
       "type": "timeseries",
@@ -373,7 +381,8 @@
           "displayMode": "table",
           "placement": "right"
         }
-      }
+      },
+      "id": 9
     }
   ]
 }
