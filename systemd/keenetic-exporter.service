@@ -1,0 +1,8 @@
+[Unit]
+Description=HomeGate: опрос метрик роутера Keenetic для Prometheus
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/homegate/venv/bin/python /opt/homegate/bot/keenetic_exporter.py
+TimeoutStartSec=20

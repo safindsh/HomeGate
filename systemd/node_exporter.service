@@ -7,7 +7,7 @@ Wants=network-online.target
 User=node_exporter
 Group=node_exporter
 Type=simple
-ExecStart=/usr/local/bin/node_exporter --web.listen-address=172.17.0.1:9100
+ExecStart=/usr/local/bin/node_exporter --web.listen-address=172.17.0.1:9100 --collector.textfile.directory=/var/lib/node_exporter/textfile_collector
 Restart=on-failure
 RestartSec=5
 NoNewPrivileges=true

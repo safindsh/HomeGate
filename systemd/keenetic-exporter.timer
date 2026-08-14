@@ -1,0 +1,10 @@
+[Unit]
+Description=HomeGate: опрашивать роутер раз в 15 секунд
+
+[Timer]
+OnBootSec=30s
+OnUnitActiveSec=15s
+AccuracySec=2s
+
+[Install]
+WantedBy=timers.target
